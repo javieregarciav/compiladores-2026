@@ -1,7 +1,7 @@
 import ply.yacc as yacc
 from lexer import tokens
 
-precedence = {
+precedence = (
     ('left', 'OR'),
     ('left', 'AND'),
     ('left', 'IGUAL', 'DIFERENTE'),
@@ -9,7 +9,7 @@ precedence = {
     ('left', 'MAS', 'MENOS'),
     ('left', 'MULTIPLICACION', 'DIVIDIR', 'MODULO'),
     ('right', 'NOT', 'UMENOS')
-}
+)
 
 def p_programa(p):
     '''programa : PROGRAMA LLAVE_IZQ sentencias LLAVE_DER'''
@@ -17,8 +17,8 @@ def p_programa(p):
 
 def p_sentencias(p):
     '''sentencias : sentencias sentencia | sentencia'''
-    if len(p) == 3: p[0] = p[1] + p[2]
-    else: p[0] = [p[2]]
+    if len(p) == 3: p[0] = p[1] + [p[2]]
+    else: p[0] = [p[1]]
 
 def p_sentencia(p):
     '''sentencia : declaracion | asignacion | sentencia_si | sentencia_mientras | sentencia_hacer_mientras | sentencia_para | sentencia_imprimir |sentencia_leer'''
@@ -43,7 +43,7 @@ def p_asignacion_para(p):
 
 def p_sentencia_si(p):
     '''sentencia_si : SI LPAREN expresion RPAREN LLAVE_IZQ sentencias LLAVE_DER | SI LPAREN expresion RPAREN LLAVE_IZQ sentencias LLAVE_DER SINO LLAVE_IZQ sentencias LLAVE_DER'''
-    if len(p) == 3: p[0] = ('si', p[3], p[6], None)
+    if len(p) == 8: p[0] = ('si', p[3], p[6], None)
     else: p[0] = ('si', p[3], p[6], p[10])
 
 def p_sentencia_mientras(p):
@@ -89,12 +89,12 @@ def p_expresion_literal(p):
 
 def p_error(p):
     if p:
-        print(f"Error de sintaxis en la linea {p.lineno}, columna {p.lexpos}: token inesperado '{p.value}")
+        print(f"Error de sintaxis en la linea {p.lineno}, columna {p.lexpos}: token inesperado '{p.value}'")
         while True:
             tok = parser.token()
             if not tok or tok.type == 'PUNTO_COMA':
                 break
-            parser.restart()
-        else print("Error de sintaxis: final de archivo inesperado")
+        parser.restart()
+    else: print("Error de sintaxis: final de archivo inesperado")
 
 parser = yacc.yacc()
