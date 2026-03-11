@@ -1,5 +1,5 @@
 import ply.yacc as yacc
-from lexer import tokens
+from lexer import tokens, lista_errores, encontrar_columna
 
 precedence = (
     ('left', 'OR'),
@@ -89,12 +89,24 @@ def p_expresion_literal(p):
 
 def p_error(p):
     if p:
-        print(f"Error de sintaxis en la linea {p.lineno}, columna {p.lexpos}: token inesperado '{p.value}'")
+        columna = encontrar_columna(p.lexer.lexdata, p)
+        lista_errores.append({
+            'tipo': 'Sintactico',
+            'descripcion': f"token inesperado: '{p.value}'",
+            'linea': p.lineno,
+            'columna': columna
+        })
         while True:
             tok = parser.token()
             if not tok or tok.type == 'PUNTO_COMA':
                 break
         parser.restart()
-    else: print("Error de sintaxis: final de archivo inesperado")
+    else: 
+        lista_errores.append({
+            'tipo': 'Sintactico',
+            'descripcion': f"final de archivo inesperado",
+            'linea': 0,
+            'columna': 0
+        })
 
 parser = yacc.yacc()
