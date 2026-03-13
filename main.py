@@ -11,7 +11,7 @@ if len(sys.argv) < 2:
 ruta = sys.argv[1]
 
 try: 
-    with open(ruta, 'r', encoding='utf-8') as f
+    with open(ruta, 'r', encoding='utf-8') as f:
         contenido = f.read()
 except FileNotFoundError:
     print(f"Error, no se encontró el siguiente archivo: {ruta}")
