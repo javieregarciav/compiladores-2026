@@ -3,6 +3,7 @@ import os
 from lexer import lexer, tokens, lista_errores, encontrar_columna
 from reglas_parser import parser
 from tabla_simbolos import TablaSimbolos
+from reportes import generar_html_tokens, generar_html_errores, generar_html_tabla_simbolos
 
 if len(sys.argv) < 2:
     print("Uso: python main.py <archivo>")
@@ -71,3 +72,7 @@ print(f"Simbolos: {len(tabla.obtener_todos())}")
 
 for s in tabla.obtener_todos():
     print(f"simbolo: {s.nombre}, tipo: {s.tipo}")
+
+generar_html_tokens(lista_tokens, 'reporte_tokens.html')
+generar_html_errores(lista_errores, 'reporte_errores.html')
+generar_html_tabla_simbolos(tabla, 'reporte_tabla_simbolos.html')
