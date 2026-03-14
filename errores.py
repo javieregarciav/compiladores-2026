@@ -63,3 +63,15 @@ def generar_html():
     </table>
 </body>
 </html>"""
+
+def para_reportes():
+    """Convierte los errores al formato que espera reportes.py"""
+    lista = []
+    for e in todos():
+        lista.append({
+            "tipo": e["tipo"],
+            "descripcion": e["mensaje"],
+            "linea": e["linea"],
+            "columna": 0,
+        })
+    return lista
