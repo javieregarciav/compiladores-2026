@@ -1,0 +1,27 @@
+## prueba_valida_02.txt
+## Programa válido — uso de cadenas, booleanos y función
+
+programa inicio
+
+    cadena nombre = "JOSELUIS"
+    booleano activo = verdadero
+    decimal promedio = 8.75
+
+    si (activo == verdadero) entonces
+        imprimir("Bienvenido, ")
+        imprimir(nombre)
+    fin_si
+
+    ## Operadores lógicos
+    entero a = 3
+    entero b = 7
+    si (a < b y activo == verdadero) entonces
+        imprimir("Condición combinada cumplida")
+    fin_si
+
+    ## Ciclo para
+    para entero i = 1 hasta 5 hacer
+        imprimir(i)
+    fin_para
+
+fin_programa

@@ -1,0 +1,21 @@
+programa inicio
+
+    entero x = 10
+    entero y = 5
+    entero resultado = 0
+
+    resultado = x + y
+
+    si (resultado > 10) entonces
+        imprimir("El resultado es mayor que 10")
+    sino
+        imprimir("El resultado es 10 o menor")
+    fin_si
+
+    entero contador = 0
+    mientras (contador < 3) hacer
+        contador = contador + 1
+        imprimir(contador)
+    fin_mientras
+
+fin_programa
