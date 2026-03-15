@@ -4,6 +4,7 @@ from lexer import lexer, tokens, lista_errores, encontrar_columna
 from reglas_parser import parser
 from tabla_simbolos import TablaSimbolos
 from reportes import generar_html_tokens, generar_html_errores, generar_html_tabla_simbolos
+import errores
 
 if len(sys.argv) < 2:
     print("Uso: python main.py <archivo>")
@@ -43,6 +44,11 @@ resultado = parser.parse(contenido, lexer=lexer)
 
 errores_lexicos = [e for e in lista_errores if e['tipo'] == 'Lexico']
 errores_sintacticos = [e for e in lista_errores if e['tipo'] == 'Sintactico']
+for e in errores_lexicos:
+    errores.agregar_lexico(e['descripcion'], e['linea'], e['columna'])
+for e in errores_sintacticos:
+    errores.agregar_sintactico(e['descripcion'], e['linea'], e['columna'])
+
 
 print(f"Se encontraron {len(errores_lexicos)} errores léxicos")
 print(f"Se encontraron {len(errores_sintacticos)} errores sintácticos")
