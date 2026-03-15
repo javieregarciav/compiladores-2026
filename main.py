@@ -39,11 +39,15 @@ while True:
 print(f"Se encontraron {len(lista_tokens)} tokens")
 
 print("\nFase de análisis sintáctico:")
+lista_errores.clear()
 lexer.lineno = 1
 resultado = parser.parse(contenido, lexer=lexer)
 
-errores_lexicos = [e for e in lista_errores if e['tipo'] == 'Lexico']
-errores_sintacticos = [e for e in lista_errores if e['tipo'] == 'Sintactico']
+lista_errores_unicos = list({(e['linea'], e['columna'], e['descripcion']): e for e in lista_errores}.values())
+errores_lexicos = [e for e in lista_errores_unicos if e['tipo'] == 'Lexico']
+errores_sintacticos = [e for e in lista_errores_unicos if e['tipo'] == 'Sintactico']
+errores.errores_lexicos.clear()
+errores.errores_sintacticos.clear()
 for e in errores_lexicos:
     errores.agregar_lexico(e['descripcion'], e['linea'], e['columna'])
 for e in errores_sintacticos:
