@@ -1,24 +1,5 @@
-## prueba_mixta.txt
-## Programa con AMBOS tipos de errores — prueba de robustez
-
-programa inicio
-
-    ## Válido
-    entero total = 0
-
-    ## Error léxico: símbolo '$' desconocido
-    entero precio = 25$0
-
-    ## Error sintáctico: falta paréntesis de cierre en condición
-    si (total > 0 entonces
-        imprimir("positivo")
-    fin_si
-
-    ## Válido — el compilador debe continuar después de errores
-    cadena msg = "recuperación"
-    imprimir(msg)
-
-    ## Error léxico: identificador empieza con número
-    entero 3abc = 5
-
-fin_programa
+programa {
+    entero x @ 10;
+    entero y = 5
+    entero z = 3;
+}

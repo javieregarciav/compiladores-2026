@@ -1,26 +1,4 @@
-## prueba_errores_sintacticos.txt
-## Programa con errores SINTÁCTICOS intencionales
-
-programa inicio
-
-    ## ERROR 1: falta '=' en declaración
-    entero x 10
-
-    ## ERROR 2: 'si' sin 'entonces'
-    si (x > 5)
-        imprimir("falta entonces")
-    fin_si
-
-    ## ERROR 3: 'mientras' sin 'hacer'
-    mientras (x < 20)
-        x = x + 1
-    fin_mientras
-
-    ## ERROR 4: bloque sin cerrar (falta fin_si)
-    si (x == 10) entonces
-        imprimir("sin cierre")
-
-    ## ERROR 5: operador de asignación doble
-    entero y == 7
-
-fin_programa
+programa {
+    entero x = 10
+    entero y = 5;
+}

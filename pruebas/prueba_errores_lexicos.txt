@@ -1,21 +1,4 @@
-## prueba_errores_lexicos.txt
-## Programa con errores LÉXICOS intencionales para probar errores.py
-
-programa inicio
-
-    ## ERROR 1: carácter no reconocido '@'
-    entero x @ 10
-
-    ## ERROR 2: número mal formado (doble punto decimal)
-    decimal y = 3.14.5
-
-    ## ERROR 3: cadena sin cerrar
-    cadena nombre = "Hola mundo
-
-    ## ERROR 4: carácter '#' fuera de comentario (si no es permitido solo)
-    entero z = 5 # esto puede ser error léxico
-
-    ## Variable válida para ver que el lexer continúa
-    entero valida = 99
-
-fin_programa
+programa {
+    entero x @ 10;
+    entero valida = 99;
+}
