@@ -1,0 +1,18 @@
+# ============================================================
+# Mini-Compilador — Dependencias
+# ============================================================
+# Instalación:
+#   pip install -r requirements.txt
+#
+# NOTA: este proyecto usa únicamente la librería estándar de
+# Python (re, tkinter), por lo que no requiere instalación de
+# paquetes externos. El lexer sigue el mismo diseño conceptual
+# que PLY (ply.lex) pero implementado con `re` nativo.
+#
+# Si deseas migrar a PLY en el futuro:
+#   pip install ply>=3.11
+# ============================================================
+
+# Tkinter viene incluido en Python estándar.
+# En Ubuntu/Debian, si no está disponible:
+#   sudo apt-get install python3-tk
