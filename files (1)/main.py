@@ -789,7 +789,6 @@ class MiniIDE(tk.Tk):
         sym_frame = tk.Frame(inner, bg=C["bg1"]); sym_frame.pack(fill="both", expand=True)
         self._sym_tree = self._make_treeview(sym_frame,
             ("nombre","tipo","linea","valor"),("Nombre","Tipo","Ln","Valor"),(88,58,32,68))
-        self._sym_tree.pack(fill="both", expand=True)
         tk.Frame(inner, bg=C["bd"], height=1).pack(fill="x")
         stats = tk.Frame(inner, bg=C["bg2"]); stats.pack(fill="x", padx=10, pady=8)
         tk.Label(stats, text="RESUMEN", bg=C["bg2"], fg=C["t3"],
@@ -886,7 +885,6 @@ class MiniIDE(tk.Tk):
         inner = tk.Frame(f, bg=C["bg1"]); inner.pack(fill="both", expand=True)
         self._tok_tree = self._make_treeview(inner,
             ("tipo","valor","linea","columna"),("Tipo","Valor","Ln","Col"),(140,160,50,50))
-        self._tok_tree.pack(fill="both", expand=True)
 
     def _build_tree_tab(self):
         f = self._tab_frames["tree"]
