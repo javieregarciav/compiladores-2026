@@ -1,0 +1,470 @@
+================================================================================
+EJEMPLOS DE DEMOSTRACION DEL COMPILADOR - FASE 2
+================================================================================
+
+Cada bloque tiene:
+  - Numero y titulo
+  - Que demuestra
+  - Codigo para copiar y pegar en el editor
+  - Que esperar al apretar F5
+
+Tip: copiar todo lo que esta entre ---INICIO--- y ---FIN--- (sin esas marcas).
+================================================================================
+
+
+================================================================================
+#1 - PROGRAMA BASICO: TODO BIEN
+================================================================================
+
+Que demuestra:
+  - Que el compilador acepta el programa correctamente.
+  - 0 errores, AST generado, TAC generado.
+  - Funcionalidad general del pipeline.
+
+Esperado al F5:
+  - Tokens: ~15
+  - Simbolos: 2
+  - Errores: 0
+  - TAC original: ~3 cuadruplos
+  - TAC optimizado: ~2 cuadruplos
+
+---INICIO---
+programa {
+    entero x = 5;
+    entero y = x + 3;
+    imprimir(y);
+}
+---FIN---
+
+
+================================================================================
+#2 - LOS 4 TIPOS DE DATO
+================================================================================
+
+Que demuestra:
+  - El lenguaje soporta entero, decimal, cadena, booleano.
+  - La tabla de simbolos los registra con su tipo.
+
+Esperado al F5:
+  - 4 simbolos en la tabla
+  - 0 errores
+  - TAC con 4 asignaciones
+
+---INICIO---
+programa {
+    entero edad = 25;
+    decimal salario = 15750.50;
+    cadena nombre = "Ana Garcia";
+    booleano activo = verdadero;
+
+    imprimir(edad);
+    imprimir(salario);
+    imprimir(nombre);
+    imprimir(activo);
+}
+---FIN---
+
+
+================================================================================
+#3 - CONTROL DE FLUJO: SI / SINO
+================================================================================
+
+Que demuestra:
+  - Estructura de decision con dos ramas.
+  - Generacion de TAC con saltos condicionales (ifFalse, goto, label).
+
+Esperado al F5:
+  - TAC con goto, ifFalse, label
+  - Reduccion en TAC optimizado
+
+---INICIO---
+programa {
+    entero nota = 85;
+    cadena resultado = "indefinido";
+
+    si (nota >= 70) {
+        resultado = "aprobado";
+    } sino {
+        resultado = "reprobado";
+    }
+
+    imprimir(resultado);
+}
+---FIN---
+
+
+================================================================================
+#4 - BUCLE MIENTRAS
+================================================================================
+
+Que demuestra:
+  - Bucle while con condicion y cuerpo.
+  - Generacion de etiquetas $L1, $L2 y saltos.
+
+Esperado al F5:
+  - TAC con label al inicio del bucle
+  - ifFalse para salir del bucle
+  - goto al final del cuerpo
+
+---INICIO---
+programa {
+    entero i = 0;
+    entero suma = 0;
+
+    mientras (i < 10) {
+        suma = suma + i;
+        i = i + 1;
+    }
+
+    imprimir(suma);
+}
+---FIN---
+
+
+================================================================================
+#5 - BUCLE PARA
+================================================================================
+
+Que demuestra:
+  - Bucle for con inicializacion, condicion y actualizacion.
+  - Genera TAC parecido a un while pero con la inicializacion antes.
+
+Esperado al F5:
+  - TAC con la inicializacion antes del label de inicio
+  - Update al final del cuerpo
+
+---INICIO---
+programa {
+    para (entero i = 0; i < 5; i = i + 1) {
+        imprimir(i);
+    }
+}
+---FIN---
+
+
+================================================================================
+#6 - DEMOSTRACION CLAVE DE LA OPTIMIZACION
+================================================================================
+
+Que demuestra:
+  - El optimizador reduce el codigo de manera notable.
+  - Constant folding: calcula expresiones constantes.
+  - Identidades algebraicas (x+0, x*1, x*0).
+  - Branch pruning: elimina if(verdadero) rama muerta.
+  - Dead-code elimination: elimina temporales no usados.
+
+Esperado al F5:
+  - TAC original: ~17 cuadruplos
+  - TAC optimizado: ~3 cuadruplos
+  - REDUCCION DE 80%+ (lo mas espectacular)
+
+---INICIO---
+programa {
+    entero a = 3;
+    entero b = 4;
+    entero c = (a + b) * 2;
+    entero d = c - 0;
+    entero e = d * 1;
+    entero f = e + 0;
+
+    si (verdadero) {
+        imprimir(f);
+    } sino {
+        imprimir(0);
+    }
+}
+---FIN---
+
+
+================================================================================
+#7 - ANALISIS SEMANTICO: ERRORES (CRITERIO 1 DE LA RUBRICA)
+================================================================================
+
+Que demuestra:
+  - Deteccion de los principales errores semanticos.
+  - Cada error con linea y columna.
+
+Esperado al F5:
+  - 6 errores semanticos detectados
+  - 0 cuadruplos TAC (no genera codigo si hay errores)
+
+Errores que se deben detectar:
+  1. Linea 2: tipo incompatible (entero = cadena)
+  2. Linea 3: condicion de 'si' no es booleana
+  3. Linea 3: variable 'z' no declarada
+  4. Linea 4: division por cero
+  5. Linea 5: asignacion incompatible (entero = booleano)
+  6. Linea 6: variable 'x' duplicada
+
+---INICIO---
+programa {
+    entero x = "hola";
+    si (x) { imprimir(z); }
+    decimal r = 10 / 0;
+    x = verdadero;
+    entero x = 99;
+}
+---FIN---
+
+
+================================================================================
+#8 - REPORTE HTML (CRITERIO 2 DE LA RUBRICA)
+================================================================================
+
+Que demuestra:
+  - Generacion del reporte HTML estructurado de errores semanticos.
+  - Cada error con linea, columna, categoria y descripcion.
+
+Como probarlo:
+  1. Pegar este codigo (igual al #7 pero con mas errores).
+  2. F5.
+  3. Click en el boton "REPORTES HTML" (barra inferior).
+  4. Elegir una carpeta destino (ej. Escritorio).
+  5. Se abre automaticamente el reporte semantico en el navegador.
+
+---INICIO---
+programa {
+    entero x = "hola";
+    si (x) {
+        imprimir(z);
+        booleano b = 5;
+    }
+    decimal r = 10 / 0;
+    cadena s = !verdadero;
+    para (entero i = 0; i; i = i + 1) {
+        x = x + verdadero;
+    }
+    imprimir(noexiste);
+}
+---FIN---
+
+
+================================================================================
+#9 - OPERACIONES ARITMETICAS Y LOGICAS
+================================================================================
+
+Que demuestra:
+  - Aritmetica entre numericos.
+  - Operadores logicos &&, ||, !.
+  - Comparaciones <, >, ==.
+  - Precedencia de operadores.
+
+Esperado al F5:
+  - 0 errores
+  - TAC con operaciones encadenadas
+
+---INICIO---
+programa {
+    entero a = 10;
+    entero b = 3;
+    entero suma = a + b;
+    entero resto = a % b;
+    decimal division = 10.0 / 3.0;
+
+    booleano mayor = a > b;
+    booleano igual = (a == b);
+    booleano compuesto = (a > 0) && (b < 10);
+    booleano negado = !mayor;
+
+    imprimir(suma);
+    imprimir(resto);
+    imprimir(division);
+    imprimir(compuesto);
+}
+---FIN---
+
+
+================================================================================
+#10 - HACER-MIENTRAS (DO-WHILE)
+================================================================================
+
+Que demuestra:
+  - Bucle que se ejecuta al menos una vez (condicion al final).
+  - TAC con label inicio, cuerpo, condicion, salto.
+
+---INICIO---
+programa {
+    entero contador = 0;
+
+    hacer_mientras {
+        contador = contador + 1;
+        imprimir(contador);
+    } mientras (contador < 5);
+}
+---FIN---
+
+
+================================================================================
+#11 - WIDENING (PROMOCION DE TIPOS) - NO ES ERROR
+================================================================================
+
+Que demuestra:
+  - decimal acepta valores entero (promocion segura).
+  - El compilador NO da error en este caso.
+
+Esperado al F5:
+  - 0 errores
+  - 3 simbolos en la tabla
+
+---INICIO---
+programa {
+    decimal x = 5;
+    decimal y = 2 + 3;
+    decimal z = x + y;
+
+    imprimir(z);
+}
+---FIN---
+
+
+================================================================================
+#12 - PROGRAMA COMPLETO INTEGRADOR
+================================================================================
+
+Que demuestra:
+  - Todas las construcciones del lenguaje juntas.
+  - Programa "real" que combina declaraciones, control de flujo,
+    bucles, expresiones y entrada/salida.
+
+Esperado al F5:
+  - ~236 tokens
+  - ~16 simbolos
+  - 0 errores
+  - TAC original: ~71 cuadruplos
+  - TAC optimizado: ~36 cuadruplos (REDUCCION ~50%)
+
+---INICIO---
+programa {
+    entero totalAlumnos = 30;
+    decimal sumaNotas = 0.0;
+    decimal promedio = 0.0;
+    entero aprobados = 0;
+    entero reprobados = 0;
+    booleano cursoActivo = verdadero;
+    cadena nombreCurso = "Compiladores";
+
+    decimal nota1 = 85.0;
+    decimal nota2 = 72.5;
+    decimal nota3 = 91.0;
+    decimal nota4 = 60.0;
+    decimal nota5 = 55.5;
+
+    sumaNotas = nota1 + nota2 + nota3 + nota4 + nota5;
+    entero totalMuestras = 5;
+    promedio = sumaNotas / totalMuestras;
+
+    si (nota1 >= 70) { aprobados = aprobados + 1; } sino { reprobados = reprobados + 1; }
+    si (nota2 >= 70) { aprobados = aprobados + 1; } sino { reprobados = reprobados + 1; }
+    si (nota3 >= 70) { aprobados = aprobados + 1; } sino { reprobados = reprobados + 1; }
+
+    cadena estadoCurso = "indefinido";
+    si (promedio >= 90) {
+        estadoCurso = "Excelente";
+    } sino {
+        si (promedio >= 75) {
+            estadoCurso = "Bueno";
+        } sino {
+            estadoCurso = "Regular";
+        }
+    }
+
+    booleano cursoExitoso = cursoActivo && (aprobados > reprobados);
+
+    imprimir(nombreCurso);
+    imprimir(promedio);
+    imprimir(estadoCurso);
+    imprimir(cursoExitoso);
+}
+---FIN---
+
+
+================================================================================
+#13 - CARACTERES ILEGALES (ERROR LEXICO)
+================================================================================
+
+Que demuestra:
+  - El lexer detecta caracteres que no pertenecen al lenguaje.
+  - Cada caracter ilegal se reporta con linea y columna.
+
+Esperado al F5:
+  - Errores lexicos con linea y columna
+  - No genera TAC
+
+---INICIO---
+programa {
+    entero x = 5@2;
+    decimal y = 3.14#15;
+    entero z = $x;
+}
+---FIN---
+
+
+================================================================================
+#14 - COMENTARIOS DE LINEA Y BLOQUE
+================================================================================
+
+Que demuestra:
+  - Comentarios // y /* */ se ignoran.
+  - No afectan el conteo de tokens ni generan errores.
+
+Esperado al F5:
+  - 0 errores
+  - Solo se cuentan los tokens fuera de comentarios
+
+---INICIO---
+programa {
+    // Esto es un comentario de linea
+    entero x = 10;
+
+    /* Este es un comentario
+       de varias lineas
+       y tambien se ignora */
+    decimal pi = 3.14;
+
+    // Variable booleana
+    booleano flag = verdadero;
+
+    imprimir(x);   // imprime 10
+    imprimir(pi);  // imprime 3.14
+    imprimir(flag);
+}
+---FIN---
+
+
+================================================================================
+ORDEN SUGERIDO PARA UNA PRESENTACION DE 5-7 MINUTOS
+================================================================================
+
+  Minuto 1:    #2 (los 4 tipos de dato)
+               -> mostrar tokens, simbolos, AST
+
+  Minuto 2-3:  #6 (optimizacion espectacular)
+               -> tab "Codigo Intermedio"
+               -> mostrar Original (17) vs Optimizado (3)
+               -> sub-tab Comparacion lado a lado
+               -> señalar reduccion 82%
+
+  Minuto 4:    #7 (errores semanticos)
+               -> mostrar los 6 errores con linea/columna
+               -> click "REPORTES HTML"
+               -> abrir el HTML en navegador (criterio 2)
+
+  Minuto 5-6:  #12 (programa completo integrador)
+               -> mostrar ~71 cuads -> ~36 cuads
+               -> tab "Codigo Intermedio" -> Comparacion
+
+  Minuto 7:    terminal: python qa_rubrica.py
+               -> mostrar 42/42 PASS
+
+
+================================================================================
+TIPS PARA LA DEMO
+================================================================================
+
+- Antes de cada nuevo ejemplo, click en "LIMPIAR" para vaciar el editor.
+- Si algo no se ve, presiona F5 otra vez.
+- En la pestaña "Codigo Intermedio" usa las sub-tabs:
+    Original | Optimizado | Comparacion | Info
+- En la pestaña "Errores" los errores se muestran con su linea y columna.
+- El boton "REPORTES HTML" abre el navegador automaticamente.
+- El menu "EJEMPLOS" tiene 7 ejemplos precargados por si te quedas en blanco.
