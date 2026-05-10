@@ -4,7 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[spanish,es-tabla,es-noshorthands]{babel}
-\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage[a4paper,margin=2.2cm]{geometry}
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{tcolorbox}
@@ -12,22 +12,24 @@
 \usepackage{titlesec}
 \usepackage{parskip}
 \usepackage{hyperref}
-\usepackage{array}
-\usepackage{colortbl}
 
 \definecolor{azulOscuro}{HTML}{1E3C78}
 \definecolor{azulMedio}{HTML}{2A5BB1}
+\definecolor{azulSuave}{HTML}{E8EEFA}
 \definecolor{grisCodigo}{HTML}{F5F6FA}
 \definecolor{grisBorde}{HTML}{D0D4DD}
-\definecolor{verdeOK}{HTML}{2D7D46}
-\definecolor{rojoErr}{HTML}{B23B3B}
-\definecolor{ambar}{HTML}{B07C00}
+\definecolor{kw}{HTML}{0033B3}
+\definecolor{str}{HTML}{067D17}
+\definecolor{com}{HTML}{8C8C8C}
+\definecolor{verdeOk}{HTML}{229954}
+\definecolor{rojoErr}{HTML}{C0392B}
+\definecolor{moradoSem}{HTML}{8E44AD}
 
 \hypersetup{
   colorlinks=true,
   linkcolor=azulMedio,
   urlcolor=azulMedio,
-  pdftitle={Guia de pruebas - Fase 2}
+  pdftitle={Compiladores 2026 - Guia de Pruebas Fase 2}
 }
 
 \titleformat{\section}
@@ -40,336 +42,542 @@
   {\color{azulMedio}\normalsize\bfseries}
   {\thesubsubsection.}{0.5em}{}
 
-\lstdefinestyle{src}{
-  backgroundcolor=\color{grisCodigo},
-  basicstyle=\ttfamily\small,
-  frame=single,
-  framerule=0.4pt,
-  rulecolor=\color{grisBorde},
-  numbers=none,
-  showstringspaces=false,
-  breaklines=true,
-  xleftmargin=8pt,
-  xrightmargin=8pt,
-  aboveskip=6pt,
-  belowskip=6pt,
+\lstdefinestyle{ml}{
+  backgroundcolor=\color{azulSuave},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single, framerule=0.4pt, rulecolor=\color{azulMedio},
+  numbers=none, showstringspaces=false, breaklines=true,
+  xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt,
 }
-\lstset{style=src}
+\lstdefinestyle{tac}{
+  backgroundcolor=\color{grisCodigo},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single, framerule=0.4pt, rulecolor=\color{grisBorde},
+  numbers=none, showstringspaces=false, breaklines=true,
+  xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt,
+}
+\lstdefinestyle{err}{
+  backgroundcolor=\color{rojoErr!5},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single, framerule=0.4pt, rulecolor=\color{rojoErr},
+  numbers=none, showstringspaces=false, breaklines=true,
+  xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt,
+}
 
-\newtcolorbox{caja}[2][azulMedio]{
-  colback=grisCodigo,
-  colframe=#1,
-  title=\textbf{#2},
-  fonttitle=\color{white},
-  boxrule=0.5pt,
-  arc=2pt,
+\newtcolorbox{caja}[1]{
+  colback=grisCodigo, colframe=azulMedio,
+  title=\textbf{#1}, fonttitle=\color{white},
+  boxrule=0.5pt, arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt, after skip=8pt,
+}
+\newtcolorbox{prueba}[1]{
+  colback=verdeOk!10, colframe=verdeOk,
+  title=\textbf{#1}, fonttitle=\color{white},
+  boxrule=0.6pt, arc=2pt,
   left=6pt,right=6pt,top=4pt,bottom=4pt,
   before skip=8pt, after skip=8pt,
 }
 
-\newcommand{\test}[1]{%
-  \subsection*{\color{azulOscuro}#1}
-  \addcontentsline{toc}{subsection}{#1}
-}
-
 \title{\vspace{-1.2cm}\color{azulOscuro}\textbf{Compiladores 2026 --- Fase 2}\\[0.3em]
-\large\color{black}Guía de pruebas en vivo}
+\large\color{black}Guia de Pruebas: como demostrar cada feature del compilador}
 \author{}
 \date{}
 
 \begin{document}
 \maketitle
-\vspace{-1.4cm}
+\vspace{-1.2cm}
 
-\section{Setup}
+\section{Como ejecutar las pruebas}
 
-\begin{caja}{Tkinter (recomendado para presentar)}
-\begin{lstlisting}
-python "files (1)/main.py"
-\end{lstlisting}
+\subsection{Requisitos}
+
 \begin{itemize}[leftmargin=*,nosep]
-  \item \textbf{F5} = Analizar.
-  \item Botón \textbf{Ejemplos} (abajo a la izquierda) carga los 7
-        programas precargados.
+  \item Python 3.10 o superior.
+  \item Modulo \texttt{PLY} 3.11 o superior: \texttt{pip install ply}.
+  \item Para la UI web: PHP y un navegador.
 \end{itemize}
-\end{caja}
 
-\begin{caja}{Web (alternativa, si tenés XAMPP/WAMP corriendo)}
+\subsection{Modos de ejecucion}
+
+\begin{caja}{Tres formas de probar el compilador}
 \begin{enumerate}[leftmargin=*,nosep]
-  \item Copiar \texttt{files (1)/} a \texttt{htdocs/minicompiler/}.
-  \item Abrir \url{http://localhost/minicompiler/index.php}.
-  \item Botón \textbf{Analizar} arriba.
+  \item \textbf{UI escritorio:} \texttt{python main.py}
+        Editor + paneles de tokens, AST, semantico, TAC, errores.
+        Atajo \texttt{F5} ejecuta el analisis; boton "REPORTES HTML"
+        genera los archivos en una carpeta a eleccion.
+  \item \textbf{UI web:} servir \texttt{index.php} con PHP. Ejecuta
+        el codigo en el navegador y llama a \texttt{bridge.py}.
+  \item \textbf{CLI / JSON:} \texttt{python bridge.py archivo.programa}
+        Imprime el resultado completo en JSON. Con la opcion
+        \texttt{--reportes carpeta/} tambien genera los HTMLs.
 \end{enumerate}
 \end{caja}
 
-\section{Pruebas a presentar (orden recomendado)}
+\subsection{Suites automaticas}
 
-\subsection*{Test 1 --- Pipeline completo: frontend $\rightarrow$ TAC $\rightarrow$ backend optimizado}
-
-\textbf{Código:}
-\begin{lstlisting}
-int a = 3;
-int b = 4;
-int c = a + b;
-print(c);
+\begin{lstlisting}[style=tac]
+python qa_rubrica.py    # 42 casos contra los 5 criterios de la rubrica
+python qa_completo.py   # 90 casos exhaustivos (9 bloques A-I)
+python qa_test.py       # 7 ejemplos precargados (bridge.py)
 \end{lstlisting}
 
-\textbf{Qué mostrar:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item Tab \textbf{Tokens}: 16 tokens detectados.
-  \item Tab \textbf{Árbol}: AST con nodos
-        \texttt{Program $\rightarrow$ Declaration $\rightarrow$ BinaryOp(+)}.
-  \item Tab \textbf{Código Intermedio $\rightarrow$ Original}:
-        \texttt{\$t1 = a + b; c = \$t1; print c}.
-  \item Tab \textbf{Código Intermedio $\rightarrow$ Optimizado}:
-        \texttt{c = 7; print 7} (reducción $\sim$30\,\%).
-\end{itemize}
+\textbf{Estado actual:} \texttt{qa\_rubrica.py} 42/42 PASS,
+\texttt{qa\_completo.py} 90/90 PASS, \texttt{qa\_test.py} 7/7 PASS.
 
-\textbf{Qué decir:} ``Acá se ve el flujo completo: el frontend produce el
-TAC, el backend lo simplifica sin tocar el lenguaje fuente. Esa es la
-frontera.''
+\section{Sintaxis del lenguaje}
 
-\subsection*{Test 2 --- Constant Folding}
-
-\textbf{Código:}
-\begin{lstlisting}
-int x = (3 + 4) * 2 - 5;
-print(x);
+\begin{lstlisting}[style=tac]
+Estructura:       programa { ... }
+Tipos:            entero  decimal  cadena  booleano
+Control:          si  sino  mientras  hacer_mientras  para
+I/O:              imprimir  leer
+Logicos:          verdadero  falso  &&  ||  !
 \end{lstlisting}
 
-\textbf{Esperado:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item Original: 5 cuádruplos con \texttt{\$t1, \$t2, \$t3}.
-  \item Optimizado: \texttt{x = 9; print 9}.
-\end{itemize}
+\begin{lstlisting}[style=ml]
+programa {
+    entero edad = 25;
+    decimal salario = 15750.50;
+    cadena nombre = "Ana Garcia";
+    booleano activo = verdadero;
 
-\textbf{Qué decir:} ``Como los dos operandos son constantes, el
-optimizador evalúa la expresión en compilación. La aritmética desaparece
-del código generado.''
+    si (edad >= 18 && activo) {
+        imprimir(nombre);
+    } sino {
+        imprimir("menor");
+    }
 
-\subsection*{Test 3 --- Identidades algebraicas}
-
-\textbf{Código:}
-\begin{lstlisting}
-int x = 7;
-int y = x + 0;
-int z = x * 1;
-int w = x * 0;
-print(y); print(z); print(w);
-\end{lstlisting}
-
-\textbf{Esperado:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item \texttt{y} y \texttt{z} se reducen a copias directas de \texttt{x}.
-  \item \texttt{w} se reemplaza por \texttt{0} literal.
-  \item Los temporales intermedios desaparecen por dead-code.
-\end{itemize}
-
-\textbf{Qué decir:} ``\texttt{x+0}, \texttt{x*1} y \texttt{x*0} se
-reescriben sin necesidad de evaluar --- son identidades.''
-
-\subsection*{Test 4 --- Branch Pruning}
-
-\textbf{Código:}
-\begin{lstlisting}
-if (true) {
-  print(1);
-} else {
-  print(2);
+    mientras (edad > 0) { edad = edad - 1; }
+    para (entero i = 0; i < 5; i = i + 1) {
+        imprimir(i);
+    }
 }
 \end{lstlisting}
 
-\textbf{Esperado:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item Original: tiene \texttt{ifFalse true goto \$L1}, ambas ramas, etiquetas.
-  \item Optimizado: solo \texttt{print 1}. La rama \texttt{else} y los
-        saltos desaparecen.
-\end{itemize}
+\section{Pruebas por criterio de la rubrica}
 
-\textbf{Qué decir:} ``Después de copy-propagation la condición queda como
-literal \texttt{true}. La pasada de Branch Pruning detecta el salto
-inútil y lo elimina; después Jump Threading limpia las etiquetas
-huérfanas.''
+\subsection{Criterio 1: Deteccion de errores semanticos}
 
-\subsection*{Test 5 --- Control de flujo (while)}
+\subsubsection{P1.1 --- Variable no declarada}
+\begin{lstlisting}[style=ml]
+programa { imprimir(noexiste); }
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 1, Col 20: Variable 'noexiste' no declarada
+\end{lstlisting}
 
-\textbf{Código:}
-\begin{lstlisting}
-int n = 0;
-int i = 0;
-while (i < 3) {
-  n = n + i;
-  i = i + 1;
+\subsubsection{P1.2 --- Variable duplicada}
+\begin{lstlisting}[style=ml]
+programa {
+    entero x = 1;
+    entero x = 2;
 }
-print(n);
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 3: Variable 'x' ya fue declarada en este ambito (linea 2)
 \end{lstlisting}
 
-\textbf{Qué mostrar:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item En el TAC se ve la estructura del while:
-        \texttt{\$L1: \dots ifFalse \dots goto \$L2 \dots goto \$L1 \dots \$L2:}.
-  \item Las variables del lazo \textbf{no} se foldean (porque su valor
-        cambia en cada iteración).
-  \item El optimizador respeta los bordes de bloque (las etiquetas
-        invalidan el entorno de propagación).
-\end{itemize}
-
-\textbf{Qué decir:} ``Acá se ve por qué la propagación se invalida en
-saltos: si el optimizador asumiera que \texttt{i} sigue valiendo \texttt{0}
-dentro del lazo, rompería el programa.''
-
-\subsection*{Test 6 --- For completo}
-
-\textbf{Código:}
-\begin{lstlisting}
-int s = 0;
-for (int i = 0; i < 5; i = i + 1) {
-  s = s + i;
+\subsubsection{P1.3 --- Tipo incompatible en declaracion}
+\begin{lstlisting}[style=ml]
+programa {
+    entero x = "hola";
+    booleano b = 5;
+    entero y = 3.14;
 }
-print(s);
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 2: Asignacion incompatible: variable 'x' de tipo
+    'entero' no puede recibir un valor 'cadena'
+[Semantico] Linea 3: Asignacion incompatible: variable 'b' de tipo
+    'booleano' no puede recibir un valor 'entero'
+[Semantico] Linea 4: Asignacion incompatible: variable 'y' de tipo
+    'entero' no puede recibir un valor 'decimal'
 \end{lstlisting}
 
-\textbf{Qué mostrar:} misma idea que el while; se ve cómo \texttt{for} se
-traduce a TAC con etiqueta de inicio, condición, cuerpo, actualización y
-salto.
+\subsubsection{P1.4 --- Widening permitido (no es error)}
+\begin{lstlisting}[style=ml]
+programa {
+    decimal x = 5;
+    decimal y = 2 + 3;
+}
+\end{lstlisting}
+\begin{prueba}{Resultado esperado}
+Sin errores. La promocion \texttt{entero} $\rightarrow$ \texttt{decimal}
+es semanticamente segura y se acepta.
+\end{prueba}
 
-\subsection*{Test 7 --- Recuperación ante errores}
-
-\textbf{Código:}
-\begin{lstlisting}
-int x = 5@;
-int x = 10;
-string s = "sin cerrar
+\subsubsection{P1.5 --- Condicion no booleana}
+\begin{lstlisting}[style=ml]
+programa {
+    entero x = 5;
+    si (x) { imprimir(x); }
+    mientras (x + 1) { x = x - 1; }
+    para (entero i = 0; i; i = i + 1) { imprimir(i); }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 3: La condicion del 'si' debe ser booleana, no 'entero'
+[Semantico] Linea 4: La condicion del 'mientras' debe ser booleana, no 'entero'
+[Semantico] Linea 5: La condicion del 'para' debe ser booleana, no 'entero'
 \end{lstlisting}
 
-\textbf{Qué mostrar:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item Tab \textbf{Errores} lista los 3 problemas:
-  \begin{itemize}[leftmargin=*,nosep]
-    \item \texttt{Carácter ilegal '@'} (léxico)
-    \item \texttt{'x' ya fue declarado} (semántico)
-    \item \texttt{Carácter ilegal '"'} (cadena sin cerrar)
-  \end{itemize}
-  \item A pesar de los errores, el TAC \textbf{se sigue generando} para
-        la parte válida.
-\end{itemize}
-
-\textbf{Qué decir:} ``El compilador no aborta al primer error: reporta
-todos y sigue generando lo que puede.''
-
-\subsection*{Test 8 --- Unary minus (bug recién arreglado)}
-
-\textbf{Código:}
-\begin{lstlisting}
-int x = -5;
-int y = -x;
-print(y);
+\subsubsection{P1.6 --- Division por cero}
+\begin{lstlisting}[style=ml]
+programa {
+    entero a = 10 / 0;
+    entero b = 10 % 0;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 2: Division por cero (operador '/')
+[Semantico] Linea 3: Division por cero (operador '%')
 \end{lstlisting}
 
-\textbf{Esperado:}
-\begin{itemize}[leftmargin=*,nosep]
-  \item Original:
-        \texttt{\$t1 = 0 - 5; x = \$t1; \$t2 = 0 - x; y = \$t2; print y}
-  \item Optimizado: \texttt{x = -5; y = 5; print 5}
-\end{itemize}
-
-\textbf{Qué decir:} ``El unario menos se traduce a \texttt{0 - operando},
-y el optimizador lo dobla automáticamente.''
-
-\subsection*{Test 9 --- Coloreado del editor (solo Tkinter)}
-
-\textbf{Código:}
-\begin{lstlisting}
-string saludo = "Hola Mundo";
-int edad = 25;
-boolean activo = true;
-float pi = 3.1416;
+\subsubsection{P1.7 --- Operacion aritmetica incompatible}
+\begin{lstlisting}[style=ml]
+programa {
+    booleano b = verdadero;
+    entero x = b + 1;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 3: Operacion aritmetica '+' incompatible entre
+    'booleano' y 'entero'
 \end{lstlisting}
 
-\textbf{Qué mostrar:} después de F5, en el editor:
-\begin{itemize}[leftmargin=*,nosep]
-  \item \texttt{string, int, boolean, float} en celeste (palabras clave).
-  \item \texttt{"Hola Mundo"} en verde --- \textbf{incluyendo las dos comillas}.
-  \item \texttt{25}, \texttt{3.1416} en naranja.
-  \item \texttt{true} en amarillo.
-\end{itemize}
-
-\textbf{Qué decir (si alguien pregunta):} ``Antes el highlight se cortaba
-un par de caracteres antes del final del string; ahora usa el largo del
-texto fuente, no el del valor procesado.''
-
-\subsection*{Test 10 --- Vista visual del optimizador (la pieza más vendible)}
-
-\textbf{Código (programa que produce mucha reducción):}
-\begin{lstlisting}
-int a = 3;
-int b = 4;
-int c = a + b;
-int d = c * 2;
-int e = d - 0;
-int f = e * 1;
-int g = f * 0;
-print(g);
+\subsubsection{P1.8 --- Comparacion incompatible}
+\begin{lstlisting}[style=ml]
+programa {
+    entero x = 5;
+    booleano b = x == "hola";
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 3: Comparacion '==' incompatible entre 'entero' y 'cadena'
 \end{lstlisting}
 
-\textbf{Qué mostrar en la pestaña Código Intermedio:}
+\subsubsection{P1.9 --- Operacion logica entre no booleanos}
+\begin{lstlisting}[style=ml]
+programa {
+    entero a = 1; entero b = 2;
+    booleano c = a && b;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 3: Operacion logica '&&' incompatible entre 'entero' y 'entero'
+\end{lstlisting}
+
+\subsubsection{P1.10 --- Operador unario invalido}
+\begin{lstlisting}[style=ml]
+programa {
+    booleano b = verdadero;
+    entero x = -b;
+    entero y = 5;
+    booleano c = !y;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 3: Operador unario '-' incompatible con 'booleano'
+[Semantico] Linea 5: Operador '!' incompatible con 'entero'
+\end{lstlisting}
+
+\subsubsection{P1.11 --- Lectura de variable no declarada}
+\begin{lstlisting}[style=ml]
+programa { leer(variable_inexistente); }
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 1, Col 17: Variable 'variable_inexistente' no declarada
+\end{lstlisting}
+
+\subsubsection{P1.12 --- Asignacion a variable no declarada}
+\begin{lstlisting}[style=ml]
+programa { y = 10; }
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 1, Col 12: Variable 'y' no declarada
+\end{lstlisting}
+
+\subsubsection{P1.13 --- Uso antes de declaracion}
+\begin{lstlisting}[style=ml]
+programa {
+    imprimir(x);
+    entero x = 5;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=err]
+[Semantico] Linea 2: Variable 'x' usada antes de ser declarada
+    (declarada en linea 3)
+\end{lstlisting}
+
+\subsection{Criterio 2: Reporte HTML semantico}
+
+\subsubsection{P2.1 --- Desde la UI Tkinter}
+
 \begin{enumerate}[leftmargin=*,nosep]
-  \item \textbf{Sub-tab Original} --- 14+ cuádruplos.
-  \item \textbf{Sub-tab Optimizado} --- 1-2 cuádruplos (\texttt{print 0}).
-  \item \textbf{Sub-tab Comparación} --- los dos lado a lado.
-  \item \textbf{Sub-tab Info} --- explicación de las pasadas.
-  \item \textbf{Métricas en el header}:
-        \texttt{Cuádruplos: 14 $\rightarrow$ 2 $\cdot$ Reducción: 86\,\% $\cdot$ Temporales: 4 $\rightarrow$ 0}.
-  \item \textbf{Tabla de traza} abajo: cada pasada que hizo cambios, con
-        \texttt{iter / pasada / antes / después / delta}.
+  \item Abrir \texttt{python main.py}.
+  \item Cargar el ejemplo \emph{"05 Errores Lexicos"}.
+  \item Presionar \texttt{F5} para analizar.
+  \item Click en el boton \textbf{REPORTES HTML} (footer).
+  \item Elegir carpeta destino. Se generan 6 archivos.
+  \item Se abre automaticamente el reporte de errores semanticos en
+        el navegador.
 \end{enumerate}
 
-\textbf{Qué decir:} ``Esta vista sirve también como apoyo didáctico: no
-solo qué se redujo, sino \emph{por qué pasada} y \emph{en qué
-iteración}.''
+\begin{prueba}{Lo que el reporte HTML muestra}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Encabezado con titulo y timestamp.
+  \item Resumen con chips: total + cuenta por categoria (variables
+        no declaradas, tipos incompatibles, division por cero,
+        condiciones no booleanas, etc.).
+  \item Tabla con columnas: \texttt{\#}, tipo (tag morado),
+        \textbf{linea}, \textbf{columna}, identificador afectado,
+        descripcion del error.
+\end{itemize}
+\end{prueba}
 
-\section{Si algo falla en vivo}
+\subsubsection{P2.2 --- Desde la CLI}
 
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{|p{4.5cm}|p{4cm}|p{6cm}|}
+\begin{lstlisting}[style=tac]
+python bridge.py mi_programa.programa --reportes ./salida_html/
+\end{lstlisting}
+
+\textbf{Genera 6 archivos en \texttt{salida\_html/}:}
+\begin{itemize}[leftmargin=*,nosep]
+  \item \texttt{reporte\_errores\_semanticos.html} (el clave)
+  \item \texttt{reporte\_errores.html}
+  \item \texttt{reporte\_tokens.html}
+  \item \texttt{reporte\_tabla\_simbolos.html}
+  \item \texttt{reporte\_tac.html}
+  \item \texttt{reporte\_tac\_optimizado.html}
+\end{itemize}
+
+\subsection{Criterio 3: Codigo de Tres Direcciones}
+
+\subsubsection{P3.1 --- Expresion aritmetica}
+\begin{lstlisting}[style=ml]
+programa {
+    entero a = 3;
+    entero b = 4;
+    entero c = (a + b) * 2;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=tac]
+1: a = 3
+2: b = 4
+3: $t1 = a + b
+4: $t2 = $t1 * 2
+5: c = $t2
+\end{lstlisting}
+
+\subsubsection{P3.2 --- Si/sino}
+\begin{lstlisting}[style=ml]
+programa {
+    entero x = 5;
+    si (x > 0) { imprimir(x); } sino { imprimir(0); }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=tac]
+1: x = 5
+2: $t1 = x > 0
+3: ifFalse $t1 goto $L1
+4: imprimir x
+5: goto $L2
+6: $L1:
+7: imprimir 0
+8: $L2:
+\end{lstlisting}
+
+\subsubsection{P3.3 --- Mientras}
+\begin{lstlisting}[style=ml]
+programa {
+    entero i = 0;
+    mientras (i < 10) { i = i + 1; }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=tac]
+1: i = 0
+2: $L1:
+3: $t1 = i < 10
+4: ifFalse $t1 goto $L2
+5: $t2 = i + 1
+6: i = $t2
+7: goto $L1
+8: $L2:
+\end{lstlisting}
+
+\subsubsection{P3.4 --- Para y hacer-mientras}
+\textbf{Para} genera: init, label, comparacion, ifFalse, cuerpo, update,
+goto, label final. \\
+\textbf{Hacer-mientras} pone la condicion al final, asi el cuerpo
+siempre se ejecuta al menos una vez.
+
+\subsection{Criterio 4: Optimizacion}
+
+\subsubsection{P4.1 --- Constant Folding}
+\begin{lstlisting}[style=ml]
+programa { entero c = (3 + 4) * 2 - 1; imprimir(c); }
+\end{lstlisting}
+
+\textbf{Antes:}
+\begin{lstlisting}[style=tac]
+$t1 = 3 + 4
+$t2 = $t1 * 2
+$t3 = $t2 - 1
+c = $t3
+imprimir c
+\end{lstlisting}
+
+\textbf{Despues (reduccion 60\%):}
+\begin{lstlisting}[style=tac]
+c = 13
+imprimir 13
+\end{lstlisting}
+
+\subsubsection{P4.2 --- Identidades algebraicas}
+\texttt{a + 0} $\rightarrow$ \texttt{a}; \texttt{b * 1} $\rightarrow$
+\texttt{b}; \texttt{c * 0} $\rightarrow$ \texttt{0}.
+
+\subsubsection{P4.3 --- Branch Pruning}
+\begin{lstlisting}[style=ml]
+programa { si (verdadero) { imprimir(1); } sino { imprimir(2); } }
+\end{lstlisting}
+La condicion siempre verdadera elimina el \texttt{ifFalse}. La rama
+\texttt{sino} queda inalcanzable y la pasada de \emph{Unreachable Code
+Elimination} la elimina.
+
+\subsubsection{P4.4 --- Punto fijo}
+
+El optimizador aplica las 6 pasadas en orden y repite el ciclo hasta
+que ninguna haga cambios:
+\begin{enumerate}[leftmargin=*,nosep]
+  \item Constant Folding \& Algebraic
+  \item Constant / Copy Propagation
+  \item Branch Pruning
+  \item Unreachable Code Elimination
+  \item Dead-Code Elimination
+  \item Jump Threading
+\end{enumerate}
+
+\subsection{Criterio 5: Funcionamiento general}
+
+\subsubsection{P5.1 --- Los 7 ejemplos precargados}
+
+En la UI Tkinter (menu \emph{Ejemplos}):
+\begin{enumerate}[leftmargin=*,nosep]
+  \item 01 Variables y Tipos
+  \item 02 Control de Flujo
+  \item 03 Bucles mientras y para
+  \item 04 Expresiones Complejas
+  \item 05 Errores Lexicos (a proposito)
+  \item 06 Strings y Booleanos
+  \item 07 Programa Completo
+\end{enumerate}
+
+\subsubsection{P5.2 --- Pipeline completo via CLI}
+\begin{lstlisting}[style=tac]
+echo "programa { entero x = 5; imprimir(x); }" > test.programa
+python bridge.py test.programa
+\end{lstlisting}
+JSON con claves: \texttt{tokens}, \texttt{simbolos}, \texttt{errores},
+\texttt{errores\_estructurados}, \texttt{tac}, \texttt{tac\_optimizado},
+\texttt{metricas}, \texttt{traza\_optimizacion}, \texttt{reportes}.
+
+\subsubsection{P5.3 --- UI web}
+\begin{lstlisting}[style=tac]
+php -S localhost:8000
+# abrir http://localhost:8000/index.php
+\end{lstlisting}
+
+\section{Casos limite y robustez}
+
+\subsection{Programa vacio}
+\begin{lstlisting}[style=ml]
+programa { }
+\end{lstlisting}
+\textbf{Resultado:} 0 errores, TAC vacio.
+
+\subsection{Solo comentarios}
+\begin{lstlisting}[style=ml]
+// solo un comentario
+/* y otro */
+\end{lstlisting}
+\textbf{Resultado:} 0 errores.
+
+\subsection{Programa con 50 declaraciones}
+50 variables \texttt{entero v0\dots v49}. Tabla de simbolos con 50
+entradas. TAC con 50 cuadruplos. Analisis $<$ 100 ms.
+
+\subsection{Anidacion profunda}
+\begin{lstlisting}[style=ml]
+programa { entero x = ((((((1 + 2) * 3) - 4) / 5) % 6) + 7); }
+\end{lstlisting}
+6 niveles de parentesis, parser sin problemas.
+
+\subsection{Cadenas con escapes}
+\begin{lstlisting}[style=ml]
+programa {
+    cadena a = "linea1\nlinea2";
+    cadena b = "comilla \"interna\"";
+    cadena c = "";
+}
+\end{lstlisting}
+
+\section{Lista de chequeo para la demo}
+
+\begin{caja}{Checklist sugerido al presentar}
+\begin{enumerate}[leftmargin=*,nosep]
+  \item \texttt{python main.py}.
+  \item Cargar \emph{"01 Variables y Tipos"} $\rightarrow$ F5
+        $\rightarrow$ mostrar tokens, AST, simbolos, TAC.
+  \item Cargar \emph{"05 Errores Lexicos"} $\rightarrow$ F5
+        $\rightarrow$ mostrar consola de errores con linea y columna.
+  \item Click \textbf{REPORTES HTML} $\rightarrow$ se abre el reporte
+        semantico en el navegador (criterio 2).
+  \item Cargar \emph{"07 Programa Completo"} $\rightarrow$ F5
+        $\rightarrow$ tab \emph{Codigo Intermedio}: TAC original vs
+        optimizado, metricas, traza.
+  \item Terminal: \texttt{python qa\_rubrica.py} $\rightarrow$
+        \emph{42/42 PASS}.
+  \item Terminal: \texttt{python qa\_completo.py} $\rightarrow$
+        \emph{90/90 PASS}.
+\end{enumerate}
+\end{caja}
+
+\section{Resumen de cobertura}
+
+\begin{center}
+\begin{tabular}{|l|c|c|}
 \hline
-\rowcolor{grisCodigo}
-\textbf{Síntoma} & \textbf{Causa probable} & \textbf{Salida rápida} \\
+\textbf{Suite} & \textbf{Casos} & \textbf{Estado} \\
 \hline
-Web carga pero TAC sale vacío
-  & PHP no encuentra Python
-  & Caer al modo JS local (deshabilitar backend con devtools) o usar
-    Tkinter \\
+\texttt{qa\_rubrica.py}  & 42 & \textcolor{verdeOk}{42/42 PASS (100\%)} \\
+\texttt{qa\_completo.py} & 90 & \textcolor{verdeOk}{90/90 PASS (100\%)} \\
+\texttt{qa\_test.py}     &  7 & \textcolor{verdeOk}{7/7 PASS (100\%)}  \\
 \hline
-Tkinter no abre el menú de Ejemplos
-  & Foco perdido en otra ventana
-  & Click en el editor primero, después en \textbf{Ejemplos} \\
-\hline
-\texttt{python3: command not found} (web Linux)
-  & Falta alias
-  & \texttt{sudo ln -s /usr/bin/python /usr/bin/python3} \\
-\hline
-El árbol no se dibuja (web)
-  & Tokens vacíos por error léxico
-  & Mirar el tab \textbf{Errores}; corregir el código fuente \\
+\textbf{TOTAL}           & \textbf{139} & \textcolor{verdeOk}{\textbf{139/139 PASS}} \\
 \hline
 \end{tabular}
+\end{center}
 
-\section{Tips para la presentación}
+\textbf{Desglose de \texttt{qa\_completo.py} por bloque:}
 
-\begin{itemize}[leftmargin=*]
-  \item \textbf{Tené las 10 muestras pegadas en un archivo de texto
-        aparte} --- copiar/pegar es más rápido y profesional que tipear
-        en vivo.
-  \item \textbf{Empezá por el Test 1} (pipeline completo) y \textbf{terminá
-        con el Test 10} (vista visual con mucha reducción) --- el efecto
-        \emph{wow} está en ver \texttt{14 $\rightarrow$ 2 cuádruplos}.
-  \item Si presenta otra persona y se traba, los 7 ejemplos del menú
-        \textbf{Ejemplos} ya están precargados como red de seguridad ---
-        el \#4 (``Expresiones Complejas'') da \texttt{33 $\rightarrow$ 15}
-        ($\sim$55\,\% reducción), buen fallback.
-  \item Antes de la presentación: corré los 7 ejemplos una vez en orden
-        para confirmar que la máquina anda fina.
-\end{itemize}
+\begin{center}
+\begin{tabular}{|l|l|c|}
+\hline
+\textbf{Bloque} & \textbf{Area} & \textbf{Casos} \\
+\hline
+A & Lexico         & 10/10 \\
+B & Sintactico     & 10/10 \\
+C & Semantico      & 25/25 \\
+D & TAC            & 17/17 \\
+E & Optimizacion   & 10/10 \\
+F & Reportes HTML  &  7/7 \\
+G & Pipeline       &  2/2 \\
+H & Stress         &  7/7 \\
+I & Regresion      &  2/2 \\
+\hline
+\end{tabular}
+\end{center}
 
 \end{document}

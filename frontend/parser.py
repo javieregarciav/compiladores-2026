@@ -352,7 +352,20 @@ def build_tree(tokens, errors=None):
     los errores acumulados hasta el momento.
     """
     codigo = _ultimo_codigo[0]
-    if not codigo:
+    if not codigo or not codigo.strip():
+        ast_vacio = {"type": "Program", "children": []}
+        if errors is not None:
+            del errors[:]
+            errors.extend(_err_mod.todos())
+        return ast_vacio
+
+    # Si la lista de tokens (sin comentarios) es vacia, programa vacio valido
+    toks_efectivos = [t for t in (tokens or [])
+                       if t.get("tipo") not in ("NUEVA_LINEA", "ESPACIO", "COMENTARIO")]
+    if not toks_efectivos:
+        if errors is not None:
+            del errors[:]
+            errors.extend(_err_mod.todos())
         return {"type": "Program", "children": []}
 
     lex_obj = _lex_mod.get_ply_lexer()
@@ -554,6 +567,16 @@ def check_semantic(ast, tabla, errors=None):
                     _sem(f"Variable '{tok['valor']}' no declarada",
                          tok["linea"], tok["columna"], valor=tok["valor"])
                 return None
+            # Uso antes de declaracion (uso.linea < declaracion.linea)
+            if tok["linea"] < sym.linea:
+                key = (tok["valor"], tok["linea"], tok["columna"], "uso_antes")
+                if key not in _no_decl_reportadas:
+                    _no_decl_reportadas.add(key)
+                    _sem(
+                        f"Variable '{tok['valor']}' usada antes de ser declarada "
+                        f"(declarada en linea {sym.linea})",
+                        tok["linea"], tok["columna"], valor=tok["valor"],
+                    )
             return sym.tipo
         if t == "BinaryOp":
             lt = get_type(node["left"])

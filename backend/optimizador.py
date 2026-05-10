@@ -241,6 +241,26 @@ def _branch_pruning(codigo):
         nuevo.append(q)
     return nuevo, cambio
 
+def _unreachable_code(codigo):
+    """Elimina codigo despues de un goto incondicional hasta el siguiente label."""
+    nuevo = []
+    cambio = False
+    saltando = False
+    for q in codigo:
+        if saltando:
+            if q.op == "label":
+                saltando = False
+                nuevo.append(q)
+            else:
+                cambio = True
+                continue
+        else:
+            nuevo.append(q)
+            if q.op == "goto":
+                saltando = True
+    return nuevo, cambio
+
+
 def optimizar(codigo, max_iter: int = 12):
     actual = deepcopy(codigo)
     traza = []
@@ -248,6 +268,7 @@ def optimizar(codigo, max_iter: int = 12):
         ("Constant Folding & Algebraic", _constant_folding),
         ("Constant / Copy Propagation",  _propagation),
         ("Branch Pruning",               _branch_pruning),
+        ("Unreachable Code Elimination", _unreachable_code),
         ("Dead-Code Elimination",        _dead_code),
         ("Jump Threading",               _jump_threading),
     ]
