@@ -267,6 +267,131 @@ def generar_html_errores_semanticos(errores_semanticos, ruta_salida):
     return ruta_salida
 
 
+def generar_html_errores_lexicos(errores_lexicos, ruta_salida):
+    """
+    Genera un reporte HTML especifico para errores lexicos (caracteres
+    ilegales, lexemas no reconocidos, etc.) con linea y columna.
+
+    errores_lexicos: lista de dicts {tipo, descripcion, linea, columna, valor}
+    """
+    total = len(errores_lexicos)
+
+    if total == 0:
+        contenido = '<div class="empty">No se detectaron errores lexicos. El analisis lexico paso correctamente.</div>'
+    else:
+        # Estadistica por caracter ofensor
+        cuenta_por_valor = {}
+        for e in errores_lexicos:
+            v = e.get("valor", "?") or "?"
+            cuenta_por_valor[v] = cuenta_por_valor.get(v, 0) + 1
+
+        chips = [f'<div class="chip lex">Total: <strong>{total}</strong></div>']
+        for v, n in sorted(cuenta_por_valor.items(), key=lambda x: -x[1]):
+            chips.append(
+                f'<div class="chip">Caracter <span class="code">{_esc(v)}</span>: '
+                f'<strong>{n}</strong></div>'
+            )
+
+        filas = ""
+        errores_ord = sorted(
+            errores_lexicos,
+            key=lambda e: (e.get("linea", 0), e.get("columna", 0)),
+        )
+        for i, e in enumerate(errores_ord, 1):
+            valor = e.get("valor", "")
+            valor_html = f'<span class="code">{_esc(valor)}</span>' if valor else "—"
+            filas += f"""
+            <tr>
+                <td class="numcol">{i}</td>
+                <td><span class="tag lex">Lexico</span></td>
+                <td class="linecol">{_esc(e.get('linea', '—'))}</td>
+                <td class="colcol">{_esc(e.get('columna', '—'))}</td>
+                <td>{valor_html}</td>
+                <td>{_esc(e.get('descripcion', ''))}</td>
+            </tr>"""
+
+        contenido = f"""
+        <div class="summary">{''.join(chips)}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="numcol">#</th>
+                    <th>Tipo</th>
+                    <th class="linecol">Linea</th>
+                    <th class="colcol">Columna</th>
+                    <th>Caracter / Lexema</th>
+                    <th>Descripcion</th>
+                </tr>
+            </thead>
+            <tbody>{filas}</tbody>
+        </table>"""
+
+    doc = _doc(
+        "Reporte de Errores Lexicos",
+        "Caracteres y lexemas no reconocidos durante el analisis lexico",
+        contenido,
+    )
+    _escribir(ruta_salida, doc)
+    return ruta_salida
+
+
+def generar_html_errores_sintacticos(errores_sintacticos, ruta_salida):
+    """
+    Genera un reporte HTML especifico para errores sintacticos (tokens
+    inesperados, estructura gramatical invalida) con linea y columna.
+
+    errores_sintacticos: lista de dicts {tipo, descripcion, linea, columna, valor}
+    """
+    total = len(errores_sintacticos)
+
+    if total == 0:
+        contenido = '<div class="empty">No se detectaron errores sintacticos. La gramatica del programa es correcta.</div>'
+    else:
+        chips = [f'<div class="chip sint">Total: <strong>{total}</strong></div>']
+
+        filas = ""
+        errores_ord = sorted(
+            errores_sintacticos,
+            key=lambda e: (e.get("linea", 0), e.get("columna", 0)),
+        )
+        for i, e in enumerate(errores_ord, 1):
+            valor = e.get("valor", "")
+            valor_html = f'<span class="code">{_esc(valor)}</span>' if valor else "—"
+            filas += f"""
+            <tr>
+                <td class="numcol">{i}</td>
+                <td><span class="tag sint">Sintactico</span></td>
+                <td class="linecol">{_esc(e.get('linea', '—'))}</td>
+                <td class="colcol">{_esc(e.get('columna', '—'))}</td>
+                <td>{valor_html}</td>
+                <td>{_esc(e.get('descripcion', ''))}</td>
+            </tr>"""
+
+        contenido = f"""
+        <div class="summary">{''.join(chips)}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="numcol">#</th>
+                    <th>Tipo</th>
+                    <th class="linecol">Linea</th>
+                    <th class="colcol">Columna</th>
+                    <th>Token / Lexema</th>
+                    <th>Descripcion</th>
+                </tr>
+            </thead>
+            <tbody>{filas}</tbody>
+        </table>"""
+
+    doc = _doc(
+        "Reporte de Errores Sintacticos",
+        "Tokens inesperados o estructura gramatical invalida",
+        contenido,
+    )
+    _escribir(ruta_salida, doc)
+    return ruta_salida
+
+
 def _categorizar(descripcion: str) -> str:
     """Clasifica un mensaje de error semantico en una categoria amigable."""
     d = descripcion.lower()
@@ -508,9 +633,17 @@ def generar_reportes_completos(directorio, *, tokens=None, tabla=None,
 
     rutas = {}
 
-    # Errores semanticos solo
+    # Errores separados por categoria + combinado
     if errores is not None:
+        lexicos = [e for e in errores if e.get("tipo") == "Lexico"]
+        sintacticos = [e for e in errores if e.get("tipo") == "Sintactico"]
         semanticos = [e for e in errores if e.get("tipo") == "Semantico"]
+        rutas["lexicos"] = generar_html_errores_lexicos(
+            lexicos, os.path.join(directorio, "reporte_errores_lexicos.html")
+        )
+        rutas["sintacticos"] = generar_html_errores_sintacticos(
+            sintacticos, os.path.join(directorio, "reporte_errores_sintacticos.html")
+        )
         rutas["semanticos"] = generar_html_errores_semanticos(
             semanticos, os.path.join(directorio, "reporte_errores_semanticos.html")
         )

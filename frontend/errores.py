@@ -24,34 +24,50 @@ def limpiar():
     errores_semanticos.clear()
 
 
+def _duplicado(lista, error):
+    """True si ya existe un error con misma linea, columna y descripcion."""
+    for e in lista:
+        if (e["linea"] == error["linea"]
+                and e["columna"] == error["columna"]
+                and e["descripcion"] == error["descripcion"]):
+            return True
+    return False
+
+
 def agregar_lexico(mensaje, linea, columna=0, valor=""):
-    errores_lexicos.append({
+    e = {
         "tipo": "Lexico",
         "descripcion": mensaje,
         "linea": int(linea or 0),
         "columna": int(columna or 0),
         "valor": str(valor),
-    })
+    }
+    if not _duplicado(errores_lexicos, e):
+        errores_lexicos.append(e)
 
 
 def agregar_sintactico(mensaje, linea, columna=0, valor=""):
-    errores_sintacticos.append({
+    e = {
         "tipo": "Sintactico",
         "descripcion": mensaje,
         "linea": int(linea or 0),
         "columna": int(columna or 0),
         "valor": str(valor),
-    })
+    }
+    if not _duplicado(errores_sintacticos, e):
+        errores_sintacticos.append(e)
 
 
 def agregar_semantico(mensaje, linea, columna=0, valor=""):
-    errores_semanticos.append({
+    e = {
         "tipo": "Semantico",
         "descripcion": mensaje,
         "linea": int(linea or 0),
         "columna": int(columna or 0),
         "valor": str(valor),
-    })
+    }
+    if not _duplicado(errores_semanticos, e):
+        errores_semanticos.append(e)
 
 
 def todos():
