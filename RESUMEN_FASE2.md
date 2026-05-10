@@ -1,252 +1,312 @@
 # Fase 2 - Resumen general
 
-## Qué venía de la fase 1
+## Una intro rápida
 
-El proyecto en la fase 1 ya tenía un compilador funcional pero limitado a
-las dos primeras etapas:
+Un compilador es un programa que toma código escrito por una persona (en
+nuestro caso, código en español tipo `programa { entero x = 5; ... }`) y
+lo transforma en algo más simple que la máquina pueda usar. Lo hace en
+varias etapas, como una fábrica con varias estaciones.
 
-- **Análisis léxico** con PLY (`ply.lex`): tokens, palabras reservadas,
-  detección de caracteres ilegales.
-- **Análisis sintáctico** con PLY yacc (`ply.yacc`): gramática del lenguaje
-  con precedencia, recuperación básica de errores.
-- **Tabla de símbolos** sencilla (un solo ámbito).
-- **Reportes HTML** mínimos para tokens, errores y tabla de símbolos.
-- **CLI** que recibe un archivo y genera los reportes.
+En la **fase 1** ya teníamos las primeras estaciones funcionando: leer el
+código, reconocer las palabras y verificar que la gramática esté bien
+escrita. En la **fase 2** agregamos las estaciones que faltaban:
 
-No tenía análisis semántico, ni código intermedio, ni optimización, ni UI
-de escritorio o web.
+- Verificar que el código tenga **sentido** (no solo que esté bien escrito).
+- Traducirlo a una forma intermedia más fácil de procesar.
+- **Optimizarlo** para que sea más eficiente.
+- **Visualizarlo** todo en una interfaz gráfica y en reportes HTML.
 
 ---
 
-## Qué se agregó en la fase 2
+## Qué venía de antes (fase 1)
 
-### 1. Reestructuración: frontend / backend
+El compilador en la fase 1 ya sabía hacer estas cosas:
 
-El código se reorganizó en dos carpetas con un contrato compartido en el
-medio:
+- **Lexer**: lee el código carácter por carácter y agrupa lo que ve en
+  "palabras" del lenguaje (a estas palabras se les dice *tokens*). Por
+  ejemplo, en `entero x = 5;` reconoce que `entero` es un tipo, `x` es
+  un nombre de variable, `=` es asignación, `5` es un número, `;` es
+  un fin de instrucción.
 
-- **`frontend/`** — todo lo que depende del lenguaje fuente (lexer,
-  parser, tabla de símbolos, análisis semántico, generador de TAC).
-- **`intermedio.py`** — la frontera. Define la dataclass `Quad` que
-  representa un cuádruplo de código de tres direcciones, más el formateador
-  para mostrarlo.
-- **`backend/`** — todo lo que depende de la máquina destino (en este caso,
-  el optimizador).
+- **Parser**: toma los tokens y verifica que estén en un orden válido
+  según las reglas del lenguaje. Si escribís `entero = 5 x;` el parser
+  se da cuenta de que el orden está mal.
 
-La idea: si en el futuro cambia el lenguaje fuente, solo se rehace el
-frontend; si cambia la máquina destino, solo el backend. El IR es el
-único punto que ambos lados conocen.
+- **Tabla de símbolos**: lleva un registro de las variables declaradas:
+  qué nombre tienen, qué tipo, en qué línea aparecieron.
 
-### 2. Análisis semántico
+- **Reportes HTML básicos**: páginas web sencillas que muestran los tokens,
+  errores y la tabla de símbolos.
 
-Se agregó `check_semantic` en `frontend/parser.py`. Recorre el AST y detecta:
+Lo que **no tenía** la fase 1:
 
-- Variables no declaradas (al usarlas, asignarles, leerlas).
-- Variables duplicadas en el mismo ámbito.
-- Tipos incompatibles en declaraciones y asignaciones.
-- Uso de variables antes de su declaración (comparando líneas).
-- Condiciones de `si`, `mientras`, `hacer_mientras` y `para` que no son
-  booleanas.
-- División y módulo por cero literal.
-- Operaciones aritméticas, lógicas y comparaciones entre tipos incompatibles.
-- Operadores unarios (`-`, `!`) aplicados a tipos erróneos.
-- Promoción permitida: `decimal x = 5;` se acepta (widening entero → decimal).
+- No verificaba si el programa tenía sentido. Por ejemplo, `entero x = "hola";`
+  pasaba sin protestar, aunque querés meter texto en una variable entera.
+- No generaba código intermedio ni optimizado.
+- No tenía interfaz gráfica.
 
-Cada error reporta **línea y columna** y se acumula en un módulo central
-de errores (`frontend/errores.py`) con tres categorías: léxicos,
-sintácticos y semánticos.
+---
 
-### 3. Generador de Código de Tres Direcciones (TAC)
+## Lo nuevo de la fase 2
 
-Nuevo módulo `frontend/generador_intermedio.py`. Toma el AST y emite
-cuádruplos de la forma `(op, arg1, arg2, dest)`. Soporta:
+### 1. El compilador se partió en dos mitades
 
-- Asignaciones y expresiones binarias.
-- Operadores unarios (`-x` se traduce como `0 - x` para que el
-  optimizador pueda foldearlo).
-- Estructuras de control: `si/sino`, `mientras`, `hacer_mientras`, `para`.
-- I/O: `imprimir` (con múltiples argumentos) y `leer`.
-- Operadores lógicos (`&&`, `||`, `!`).
+Antes todo estaba en un montón de archivos sueltos. Ahora está organizado
+en dos carpetas con un nombre claro:
 
-Las variables temporales se llaman `$t1`, `$t2`, etc. Las etiquetas son
-`$L1`, `$L2`, etc. El prefijo `$` no se permite en identificadores del
-usuario, así que nunca chocan.
+- **`frontend/`** — la parte que entiende **el lenguaje fuente** (el
+  código en español que escribís).
+- **`backend/`** — la parte que se preocupa por **transformar** ese código
+  para que sea más eficiente.
 
-### 4. Optimizador
+Entre las dos hay un archivo intermedio que les hace de "traductor común":
+**`intermedio.py`**. Es como un protocolo: si la mitad de adelante
+(frontend) genera algo siguiendo ese protocolo, la mitad de atrás (backend)
+sabe cómo leerlo, sin importar el lenguaje original.
 
-Nuevo módulo `backend/optimizador.py` con **seis pasadas** que se aplican
-en orden y se repiten hasta que ninguna haga cambios (*punto fijo*):
+¿Por qué importa esto? Porque mañana, si quisiéramos cambiar el lenguaje
+fuente (por ejemplo, hacer el compilador en inglés), solo cambiamos el
+frontend. Si quisiéramos generar código para otro tipo de máquina, solo
+cambiamos el backend. El medio queda igual.
 
-1. **Constant Folding & Algebraic** — evalúa operaciones con dos
-   constantes (`3 + 4` → `7`); aplica identidades (`x + 0` → `x`,
-   `x * 1` → `x`, `x * 0` → `0`).
-2. **Constant / Copy Propagation** — propaga valores conocidos a usos
-   posteriores. Invalida el entorno en saltos y etiquetas.
-3. **Branch Pruning** — `ifFalse verdadero goto L` se elimina (nunca
-   salta); `ifFalse falso goto L` se convierte en `goto L`.
-4. **Unreachable Code Elimination** — después de un `goto`, todo hasta
-   el siguiente `label` queda inalcanzable y se borra.
-5. **Dead-Code Elimination** — elimina cuádruplos que escriben en un
-   temporal que nadie lee. No elimina variables del usuario.
-6. **Jump Threading** — borra `goto L` seguido inmediatamente de `L:`;
-   borra etiquetas sin referencias.
+### 2. Análisis semántico: ¿este código tiene sentido?
 
-El optimizador devuelve también una **traza** con cada modificación:
-iteración, pasada, cuádruplos antes/después, delta.
+Una cosa es que el código esté **bien escrito** (eso lo verifica el parser).
+Otra cosa es que **tenga sentido**. Por ejemplo:
+
+```
+entero x = "hola";       // mal: querés guardar texto en una variable entera
+imprimir(z);              // mal: la variable z nunca se declaró
+si (5) { ... }            // mal: la condición de un "si" tiene que ser
+                          //      verdadero/falso, no un número
+entero y = 10 / 0;        // mal: división por cero
+```
+
+Eso es lo que hace el **análisis semántico**. En la fase 2 agregamos una
+función llamada `check_semantic` que recorre el código y detecta este tipo
+de problemas. En total detecta **12 tipos de errores semánticos**, entre
+ellos:
+
+- Variables que no fueron declaradas.
+- Variables declaradas dos veces.
+- Asignar un valor de un tipo a una variable de otro tipo.
+- Usar una variable antes de declararla.
+- Condiciones que no son verdadero/falso.
+- División por cero.
+- Operaciones imposibles, como sumar un texto con un número.
+
+Cada error te dice **en qué línea y qué columna está**, para que sepas
+dónde mirar.
+
+### 3. Código de Tres Direcciones (TAC)
+
+Acá es donde aparece el "código intermedio". La idea es traducir el
+programa original a una forma **más simple y plana**, donde cada
+instrucción hace una sola cosa.
+
+Por ejemplo, una línea como:
+
+```
+entero c = (a + b) * 2;
+```
+
+Se traduce a tres instrucciones simples:
+
+```
+t1 = a + b
+t2 = t1 * 2
+c = t2
+```
+
+A cada una de esas líneas le decimos **"cuádruplo"** porque tiene cuatro
+partes: una operación (`+`, `*`, `=`), dos operandos (los valores con los
+que opera) y un destino (dónde guarda el resultado). El nombre **"código
+de tres direcciones"** viene de que cada instrucción menciona como máximo
+tres "direcciones" (lugares donde hay un valor): los dos operandos y el
+destino.
+
+Las variables que empiezan con `t` (como `t1`, `t2`) son **temporales**:
+las inventa el compilador para guardar resultados intermedios.
+
+¿Por qué hacemos esto? Porque tener el programa en esta forma simple es
+**mucho más fácil de analizar y optimizar** que con expresiones anidadas
+como las del código original.
+
+Nuestro generador de código intermedio soporta todas las cosas que tiene
+el lenguaje: asignaciones, operaciones, `si/sino`, `mientras`,
+`hacer_mientras`, `para`, `imprimir`, `leer`, y todos los operadores.
+
+### 4. Optimización
+
+Una vez que tenemos el programa en forma de cuádruplos, el **optimizador**
+lo recorre y trata de mejorarlo. "Mejorarlo" significa que el programa
+sigue haciendo lo mismo, pero ahora hace menos cuentas o usa menos memoria.
+
+El optimizador hace **seis "pasadas"** (cada pasada busca un tipo
+específico de mejora):
+
+1. **Calcular cosas que ya se pueden saber.** Si ve `t1 = 3 + 4`, en vez
+   de hacer la suma cuando el programa corra, la hace ya y deja `t1 = 7`.
+
+2. **Reemplazar variables por sus valores conocidos.** Si vio `t1 = 7` y
+   más adelante hay `t2 = t1 * 2`, lo reescribe como `t2 = 7 * 2`. Después
+   la primera pasada lo va a plegar a `t2 = 14`.
+
+3. **Eliminar saltos inútiles.** Si el programa dice "si verdadero, hacer
+   esto, sino hacer lo otro", obviamente siempre va a hacer "esto" — la
+   otra rama nunca se ejecuta y se puede borrar.
+
+4. **Borrar código al que nunca se llega.** Si después de un "saltar
+   incondicionalmente" hay más instrucciones, esas instrucciones jamás
+   se ejecutan, así que se eliminan.
+
+5. **Borrar cuentas inútiles.** Si calcula `t3 = a + b` pero nunca usa
+   `t3` después, esa cuenta no sirve para nada y se elimina.
+
+6. **Limpiar saltos redundantes.** Si dice "saltar al lugar X" y
+   exactamente abajo está el lugar X, el salto no hace nada y se borra.
+
+Lo interesante: estas pasadas se aplican **una y otra vez** hasta que
+ninguna haga cambios. Esto es porque cada pasada puede crear nuevas
+oportunidades para que otra mejore más cosas. A esto se le dice "iterar
+hasta punto fijo".
+
+**Resultado típico:** programas con 30% a 50% menos instrucciones que el
+código original, sin cambiar lo que el programa hace.
 
 ### 5. Reportes HTML
 
-Nuevo módulo `reportes.py` con generadores HTML estructurados:
+Los reportes son páginas web bonitas que muestran el resultado del análisis.
+La fase 1 tenía reportes muy básicos. En la fase 2 los rehicimos con
+diseño moderno y agregamos uno nuevo y clave:
 
-- **`reporte_errores_semanticos.html`** — el reporte clave de la fase.
-  Tabla con línea, columna, identificador afectado y descripción de cada
-  error semántico. Categorización automática (variable no declarada,
-  tipo incompatible, división por cero, etc.).
-- **`reporte_errores.html`** — todos los errores (léxicos, sintácticos,
-  semánticos) combinados con tags coloreados.
-- **`reporte_tokens.html`** — lista de tokens reconocidos.
-- **`reporte_tabla_simbolos.html`** — variables declaradas.
-- **`reporte_tac.html`** — código intermedio original.
-- **`reporte_tac_optimizado.html`** — código intermedio después del
-  optimizador.
+- **Reporte de errores semánticos** — el más importante para esta entrega.
+  Una tabla con cada error: número, tipo, **línea**, **columna**, qué
+  variable u operación afecta, y la descripción.
+- **Reporte de errores combinado** — todos los errores (léxicos,
+  sintácticos y semánticos) juntos.
+- **Reporte de tokens** — lista todo lo que el lexer reconoció.
+- **Reporte de tabla de símbolos** — las variables del programa.
+- **Reporte del código intermedio (TAC)** — los cuádruplos originales.
+- **Reporte del código intermedio optimizado** — los cuádruplos después
+  del optimizador.
 
-Todos comparten un CSS moderno (gradientes, alternancia de filas, hover,
-tags coloreados por tipo). El HTML escapa correctamente caracteres
-especiales (XSS-safe).
+Los HTML tienen diseño con gradientes, hover en las filas, etiquetas de
+colores por tipo de error (rojo léxico, amarillo sintáctico, morado
+semántico) y son seguros (no se pueden inyectar scripts maliciosos).
 
-### 6. UI de escritorio (Tkinter)
+### 6. Interfaz gráfica de escritorio (Tkinter)
 
-Nuevo archivo `main.py`: una clase `MiniIDE(tk.Tk)` con seis pestañas:
+Una ventana con seis pestañas y un editor en el centro. Lo que hace:
 
-- **Editor** con coloreado de tokens en vivo y atajo F5 para analizar.
-- **Tokens** con tipo, valor, línea y columna.
-- **Árbol** (AST) renderizado en un canvas con nodos coloreados por tipo.
-- **Semántico** con tabla de símbolos y diagnóstico.
-- **Código Intermedio** con sub-tabs para TAC original, optimizado,
-  comparación lado a lado e información de cada pasada.
-- **Errores** con consola dedicada.
+- **Editor**: coloreado de tokens en vivo mientras escribís.
+- **Tokens**: tabla con todo lo que reconoció el lexer.
+- **Árbol**: el árbol que arma el parser, dibujado como cajitas
+  conectadas.
+- **Semántico**: tabla de símbolos y estadísticas del programa.
+- **Código Intermedio**: el TAC, con sub-pestañas para ver el original,
+  el optimizado, los dos lado a lado, y una explicación de cada pasada
+  del optimizador.
+- **Errores**: consola con todos los problemas detectados.
 
-En la barra inferior:
-- **Botón "ANALIZAR"** (F5).
-- **Botón "EJEMPLOS"** con 7 programas precargados.
-- **Botón "REPORTES HTML"** que genera los 6 reportes en una carpeta y
-  abre automáticamente el reporte de errores semánticos en el navegador.
+Apretás **F5** y se ejecuta todo el análisis. Tiene un menú de
+**ejemplos** con 7 programas precargados para probar (variables, control
+de flujo, bucles, expresiones complejas, errores intencionales, etc.).
+Tiene un botón **"REPORTES HTML"** que genera los 6 reportes en la
+carpeta que elijas y abre el más importante (errores semánticos) en el
+navegador.
 
-### 7. UI web (PHP + JavaScript)
+### 7. Interfaz web (PHP + JavaScript)
 
-- `analizar.php` actúa de endpoint: recibe el código, lo guarda en un
-  archivo temporal y llama a `bridge.py` vía `exec()` para obtener el
-  resultado en JSON.
-- `index.php` muestra el editor y las pestañas en el navegador. Renderiza
-  las tablas de tokens, símbolos, errores, TAC original, TAC optimizado,
-  con métricas de reducción y traza del optimizador.
+La misma idea pero corriendo en el navegador. El usuario escribe código
+en una página web, hace click en "Analizar", y la página le muestra los
+tokens, símbolos, errores, TAC original y TAC optimizado. Por debajo, la
+página llama a nuestro pipeline en Python a través de un archivo PHP.
 
-### 8. Pipeline CLI (`bridge.py`)
+### 8. Pruebas automáticas
 
-Mejorado con:
-- Llamadas a `check_semantic` antes de generar TAC (si hay errores, no
-  emite código intermedio).
-- Salida JSON con campos extra: `errores_estructurados` (dicts en lugar
-  de strings) y `reportes` (rutas a los HTMLs generados).
-- Flag `--reportes <dir>` que genera los seis reportes en una carpeta de
-  una sola corrida.
+Para garantizar que todo funciona bien, escribimos tres conjuntos de
+pruebas que se corren con un comando:
 
-### 9. Suites de QA
+- **`qa_rubrica.py`** (42 pruebas) — una prueba por cada cosa que pide la
+  rúbrica de evaluación.
+- **`qa_completo.py`** (90 pruebas) — pruebas más detalladas: caracteres
+  raros, programas con 50 variables, anidaciones profundas, casos límite.
+- **`qa_test.py`** (7 pruebas) — los 7 ejemplos precargados de la UI,
+  corridos por línea de comandos.
 
-Tres scripts de pruebas automáticas:
+**Total: 139 pruebas, todas pasan.**
 
-- **`qa_rubrica.py`** (42 casos) — un caso por cada item de la rúbrica de
-  evaluación. Cubre los cinco criterios técnicos.
-- **`qa_completo.py`** (90 casos) — pruebas exhaustivas organizadas en
-  nueve bloques: léxico, sintáctico, semántico, TAC, optimización,
-  reportes, pipeline, stress (programas grandes, anidaciones profundas),
-  regresión.
-- **`qa_test.py`** (7 casos) — corre los siete ejemplos precargados de
-  `main.py` a través de `bridge.py` para validar el pipeline completo.
+### 9. Documentación
 
-**Total: 139 casos automáticos, 100% PASS.**
+Cuatro documentos para distintos usos:
 
-### 10. Documentación
-
-- **`DOCUMENTACION.md`** — manual técnico con instalación, uso, API,
-  arquitectura, troubleshooting.
-- **`guia_pruebas_fase2.tex`** / `.pdf` — guía de pruebas con casos
-  concretos por criterio de la rúbrica.
-- **`presentacion_fase2.tex`** / `.pdf` — guía técnica de 13 páginas
-  para la presentación.
-- **`GUION_PRESENTACION.md`** — guion paso a paso para presentar.
+- **`RESUMEN_FASE2.md`** (este archivo) — qué se hizo, contado fácil.
+- **`DOCUMENTACION.md`** — manual técnico con detalles para programadores.
+- **`presentacion_fase2.pdf`** — guía técnica de 13 páginas para preparar
+  la presentación.
+- **`GUION_PRESENTACION.md`** — guion paso a paso de qué hacer y qué
+  decir el día de la presentación.
 
 ---
 
-## Cambios al lenguaje
-
-La fase 1 ya tenía la sintaxis en español con `programa { ... }` como
-envoltorio. En la fase 2 se mantiene esa sintaxis. Lo que sí se extendió
-internamente es:
-
-- El AST ahora son **diccionarios** (no tuplas) para que `check_semantic`
-  y `GeneradorTAC` puedan recorrerlo más fácilmente.
-- Cada token, cada nodo, cada error trae **línea y columna**.
-- Los errores se manejan en un módulo central que distingue las tres
-  categorías y permite obtenerlas ordenadas por línea.
-
----
-
-## Métricas
+## Números de la fase
 
 | Indicador | Valor |
 |---|---|
-| Líneas de código Python agregadas/modificadas | ~3500 |
-| Módulos nuevos | 4 (errores, generador_intermedio, optimizador, reportes) |
-| Pasadas de optimización | 6 |
+| Líneas de código agregadas o modificadas | ~3500 |
+| Módulos nuevos | 4 |
+| Pasadas del optimizador | 6 |
 | Tipos de errores semánticos detectados | 12 |
-| Cuádruplos del IR distintos | 8 (asignación, binario, unario, label, goto, if_false, print, read) |
-| Reportes HTML generados | 6 |
-| Tests automáticos | 139 (100% PASS) |
+| Tipos de instrucción del código intermedio | 8 |
+| Reportes HTML que se generan | 6 |
+| Pruebas automáticas | 139 (todas pasan) |
 | Ejemplos precargados en la UI | 7 |
+| Pestañas de la UI de escritorio | 6 |
 
 ---
 
-## Estructura final del proyecto
+## Cómo está organizado el proyecto
 
 ```
 compiladores-2026/
-├── frontend/
-│   ├── lexer.py                    PLY lex
-│   ├── parser.py                   PLY yacc + check_semantic
-│   ├── tabla_simbolos.py           tabla con ámbitos
-│   ├── errores.py                  módulo central de errores
-│   └── generador_intermedio.py     AST → TAC
 │
-├── intermedio.py                   Quad + formatear_tac (frontera)
+├── frontend/                      Todo lo que entiende el lenguaje
+│   ├── lexer.py                   reconoce palabras
+│   ├── parser.py                  verifica gramática + semántica
+│   ├── tabla_simbolos.py          variables declaradas
+│   ├── errores.py                 maneja los errores
+│   └── generador_intermedio.py    traduce a cuádruplos
 │
-├── backend/
-│   └── optimizador.py              6 pasadas + punto fijo
+├── intermedio.py                  el "traductor común" entre las dos mitades
 │
-├── reportes.py                     generadores HTML
-├── bridge.py                       CLI / JSON
-├── main.py                         UI Tkinter
-├── index.php / analizar.php        UI web
+├── backend/                       Todo lo que optimiza
+│   └── optimizador.py             las 6 pasadas
 │
-├── qa_rubrica.py                   42 casos rúbrica
-├── qa_completo.py                  90 casos exhaustivos
-├── qa_test.py                      7 ejemplos vía bridge
+├── reportes.py                    genera los HTML
+├── bridge.py                      pipeline por línea de comandos
+├── main.py                        ventana de escritorio (Tkinter)
+├── index.php / analizar.php       página web (PHP + JS)
 │
-├── DOCUMENTACION.md
-├── GUION_PRESENTACION.md
-├── presentacion_fase2.tex/.pdf
-└── guia_pruebas_fase2.tex/.pdf
+├── qa_rubrica.py                  pruebas según la rúbrica
+├── qa_completo.py                 pruebas exhaustivas
+├── qa_test.py                     pruebas del pipeline completo
+│
+└── documentación (4 archivos)
 ```
 
 ---
 
-## Lo que esta fase deja listo para la siguiente
+## Para qué sirve todo esto
 
-El proyecto ahora tiene un IR bien definido (`Quad`) que es el punto de
-partida natural para una eventual fase 3 que genere código de máquina
-real: el frontend no se tocaría, y el backend solo necesitaría una etapa
-adicional de "traducción de TAC a ensamblador" después del optimizador.
+Lo más importante de esta fase, más allá de las funcionalidades
+puntuales, es la **separación clara** entre las dos mitades del
+compilador. Hoy genera código intermedio que se optimiza; mañana, si se
+quisiera, ese mismo código intermedio se podría traducir a código real
+de máquina (eso sería una eventual fase 3) sin tocar nada del frontend.
 
-La separación frontend / backend y el contrato `Quad` son la pieza más
-importante de esta fase desde el punto de vista arquitectónico — todo
-lo demás se construye sobre eso.
+Y todo el camino del programa — desde que lo escribís hasta que sale
+optimizado — se puede ver con detalle en la interfaz gráfica o en los
+reportes HTML, lo que hace al proyecto útil no solo como un compilador
+funcional sino también como una herramienta para entender qué hace cada
+etapa.
