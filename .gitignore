@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+texput.log
+
+# PLY artifacts
+parser.out
+parsetab.py
+
+# Editor / tooling
+.claude/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

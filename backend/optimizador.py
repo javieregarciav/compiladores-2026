@@ -35,10 +35,10 @@ def _to_num(s):
     return float(s) if "." in s else int(s)
 
 def _es_bool(s):
-    return s in ("true", "false", "True", "False")
+    return s in ("true", "false", "True", "False", "verdadero", "falso", "Verdadero", "Falso")
 
 def _to_bool(s):
-    return s in ("true", "True")
+    return s in ("true", "True", "verdadero", "Verdadero")
 
 def _fmt(v):
     if isinstance(v, bool):
@@ -212,25 +212,29 @@ def _jump_threading(codigo):
         final.append(q)
     return final, cambio
 
+_VERDADERO = frozenset(("true", "True", "1", "verdadero", "Verdadero"))
+_FALSO = frozenset(("false", "False", "0", "falso", "Falso"))
+
+
 def _branch_pruning(codigo):
     nuevo = []
     cambio = False
     for q in codigo:
         if q.op == "if_false":
-            if q.arg1 in ("true", "True", "1"):
-
+            if q.arg1 in _VERDADERO:
+                # condicion siempre verdadera -> nunca salta, se elimina
                 cambio = True
                 continue
-            if q.arg1 in ("false", "False", "0"):
-
+            if q.arg1 in _FALSO:
+                # condicion siempre falsa -> salta incondicionalmente
                 nuevo.append(Quad("goto", None, None, q.dest))
                 cambio = True
                 continue
         if q.op == "if_true":
-            if q.arg1 in ("false", "False", "0"):
+            if q.arg1 in _FALSO:
                 cambio = True
                 continue
-            if q.arg1 in ("true", "True", "1"):
+            if q.arg1 in _VERDADERO:
                 nuevo.append(Quad("goto", None, None, q.dest))
                 cambio = True
                 continue

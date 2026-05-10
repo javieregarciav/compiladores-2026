@@ -1,7 +1,7 @@
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font as tkfont
-import sys, os, re as _re
+import sys, os, re as _re, webbrowser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -11,8 +11,10 @@ from frontend import (
     GeneradorTAC,
     check_semantic,
 )
+from frontend.errores import fmt as fmt_error
 from intermedio import formatear_tac
 from backend import optimizar
+import reportes as _reportes_mod
 
 C = {
     "bg0": "#020408", "bg1": "#040810", "bg2": "#060d18",
@@ -25,19 +27,20 @@ C = {
 }
 
 HL = {
-    "INT":"#5ac8fa","FLOAT":"#5ac8fa","STRING":"#5ac8fa","BOOLEAN":"#5ac8fa",
-    "IF":"#bf5af2","ELSE":"#bf5af2","WHILE":"#bf5af2","FOR":"#bf5af2",
-    "RETURN":"#bf5af2","AND":"#bf5af2","OR":"#bf5af2","NOT":"#bf5af2",
-    "TRUE":"#ff9f0a","FALSE":"#ff9f0a","NULL":"#ff9f0a",
-    "PRINT":"#ff6b6b","INPUT":"#ff6b6b",
-    "ENTERO":"#ff9f0a","DECIMAL":"#ff9f0a",
-    "CADENA":"#30d158","ID":"#e0f4ff",
-    "MAS":"#0a84ff","MENOS":"#0a84ff","MULT":"#0a84ff",
-    "DIV":"#0a84ff","MOD":"#0a84ff","IGUAL":"#0a84ff",
+    "PROGRAMA":"#bf5af2",
+    "ENTERO":"#5ac8fa","DECIMAL":"#5ac8fa","CADENA_TIPO":"#5ac8fa","BOOLEANO":"#5ac8fa",
+    "SI":"#bf5af2","SINO":"#bf5af2","MIENTRAS":"#bf5af2","HACER_MIENTRAS":"#bf5af2","PARA":"#bf5af2",
+    "FUNCION":"#bf5af2","PROCEDIMIENTO":"#bf5af2","RETORNAR":"#bf5af2",
+    "AND":"#bf5af2","OR":"#bf5af2","NOT":"#bf5af2",
+    "VERDADERO":"#ff9f0a","FALSO":"#ff9f0a",
+    "IMPRIMIR":"#ff6b6b","LEER":"#ff6b6b",
+    "NUMERO_ENTERO":"#ff9f0a","NUMERO_DECIMAL":"#ff9f0a",
+    "CADENA_LITERAL":"#30d158","IDENTIFICADOR":"#e0f4ff",
+    "MAS":"#0a84ff","MENOS":"#0a84ff","MULTIPLICACION":"#0a84ff",
+    "DIVIDIR":"#0a84ff","MODULO":"#0a84ff","IGUAL":"#0a84ff",
     "DIFERENTE":"#0a84ff","MENOR":"#0a84ff","MAYOR":"#0a84ff",
     "MENOR_IGUAL":"#0a84ff","MAYOR_IGUAL":"#0a84ff",
-    "ASIGNACION":"#0a84ff","Y_LOGICO":"#0a84ff",
-    "O_LOGICO":"#0a84ff","NO_LOGICO":"#0a84ff",
+    "ASIGNAR":"#0a84ff",
 }
 
 NODE_COLORS = {
@@ -47,8 +50,10 @@ NODE_COLORS = {
     "Assignment": ("#0a3d2a","#0a7d6b"),
     "If":         ("#4a3000","#c07a00"),
     "While":      ("#3d2800","#a06000"),
+    "DoWhile":    ("#3d2800","#a06000"),
     "For":        ("#3a2200","#8b5e00"),
     "Print":      ("#4a0a0a","#cc2222"),
+    "Read":       ("#4a0a3a","#cc22aa"),
     "Call":       ("#4a0a0a","#cc2222"),
     "BinaryOp":   ("#0a2a0a","#1a7a1a"),
     "UnaryOp":    ("#0a2a14","#1a7a3a"),
@@ -56,17 +61,16 @@ NODE_COLORS = {
     "Literal":    ("#1a1a3a","#4a4aaa"),
     "StringLit":  ("#0a1a0a","#2a6a2a"),
     "BoolLit":    ("#1a1a3a","#6a4aaa"),
-    "NullLit":    ("#1a1a3a","#6a4aaa"),
     "Identifier": ("#1a2a2a","#3a6a6a"),
     "Token":      ("#1a1a2a","#3a3a6a"),
     "Keyword":    ("#2a1a0a","#6a4a1a"),
 }
 NODE_ICONS = {
     "Program":"O","Block":"{}","Declaration":"=",
-    "Assignment":"<","If":"?","While":"R","For":"@",
-    "Print":">","Call":"()","BinaryOp":"+",
+    "Assignment":"<","If":"?","While":"R","DoWhile":"R","For":"@",
+    "Print":">","Read":"<","Call":"()","BinaryOp":"+",
     "UnaryOp":"!","Group":"()","Literal":"#",
-    "StringLit":'"',"BoolLit":"B","NullLit":"N","Identifier":"$","Token":"T","Keyword":"K",
+    "StringLit":'"',"BoolLit":"B","Identifier":"$","Token":"T","Keyword":"K",
 }
 
 _TEXTO_INFO_TAC = """\
@@ -151,171 +155,182 @@ lados conocen.
 
 EJEMPLOS = [
 ("01 Variables y Tipos", """// Ejemplo 01 - Variables y Tipos de Dato
-int edad = 25;
-float salario = 15750.50;
-string nombre = "Ana Garcia";
-boolean activo = true;
+programa {
+    entero edad = 25;
+    decimal salario = 15750.50;
+    cadena nombre = "Ana Garcia";
+    booleano activo = verdadero;
 
-int anioNacimiento = 2025 - edad;
-float bono = salario * 0.10;
-float salarioTotal = salario + bono;
-int residuo = edad % 7;
+    entero anioNacimiento = 2025 - edad;
+    decimal bono = salario * 0.10;
+    decimal salarioTotal = salario + bono;
+    entero residuo = edad % 7;
 
-edad = edad + 1;
-print(nombre);
-print(salarioTotal);
+    edad = edad + 1;
+    imprimir(nombre);
+    imprimir(salarioTotal);
+}
 """),
-("02 Control de Flujo", """// Ejemplo 02 - Estructuras if / else
-int nota = 78;
-boolean aprobado = false;
-string calificacion = "indefinida";
+("02 Control de Flujo", """// Ejemplo 02 - Estructuras si / sino
+programa {
+    entero nota = 78;
+    booleano aprobado = falso;
+    cadena calificacion = "indefinida";
 
-if (nota >= 90) {
-    calificacion = "Excelente";
-    aprobado = true;
-} else {
-    if (nota >= 70) {
-        calificacion = "Aprobado";
-        aprobado = true;
-    } else {
-        calificacion = "Reprobado";
-        aprobado = false;
+    si (nota >= 90) {
+        calificacion = "Excelente";
+        aprobado = verdadero;
+    } sino {
+        si (nota >= 70) {
+            calificacion = "Aprobado";
+            aprobado = verdadero;
+        } sino {
+            calificacion = "Reprobado";
+            aprobado = falso;
+        }
     }
-}
 
-boolean conBecas = aprobado && (nota >= 75);
-print(calificacion);
-print(conBecas);
+    booleano conBecas = aprobado && (nota >= 75);
+    imprimir(calificacion);
+    imprimir(conBecas);
+}
 """),
-("03 Bucles while y for", """// Ejemplo 03 - Bucles while y for
-int i = 1;
-int suma = 0;
-while (i <= 100) {
-    suma = suma + i;
-    i = i + 1;
-}
-print(suma);
+("03 Bucles mientras y para", """// Ejemplo 03 - Bucles mientras y para
+programa {
+    entero i = 1;
+    entero suma = 0;
+    mientras (i <= 100) {
+        suma = suma + i;
+        i = i + 1;
+    }
+    imprimir(suma);
 
-int n = 10;
-int factorial = 1;
-int k = n;
-while (k > 1) {
-    factorial = factorial * k;
-    k = k - 1;
-}
-print(factorial);
+    entero n = 10;
+    entero factorial = 1;
+    entero k = n;
+    mientras (k > 1) {
+        factorial = factorial * k;
+        k = k - 1;
+    }
+    imprimir(factorial);
 
-int base = 7;
-for (int j = 1; j <= 12; j = j + 1) {
-    int resultado = base * j;
-    print(resultado);
+    entero base = 7;
+    para (entero j = 1; j <= 12; j = j + 1) {
+        entero resultado = base * j;
+        imprimir(resultado);
+    }
 }
 """),
 ("04 Expresiones Complejas", """// Ejemplo 04 - Expresiones y Operadores
-float a = 10.5;
-float b = 3.2;
-float c = 0.0;
+programa {
+    decimal a = 10.5;
+    decimal b = 3.2;
+    decimal c = 0.0;
 
-c = a + b * 2.0 - 1.5;
-float d = a / b + b % 3.0;
+    c = a + b * 2.0 - 1.5;
+    decimal d = a / b + b % 3.0;
 
-boolean r1 = (a > 5.0) && (b < 5.0);
-boolean r2 = (a == 10.5) || (b == 0.0);
-boolean r3 = !(a < b) && (c != 0.0);
+    booleano r1 = (a > 5.0) && (b < 5.0);
+    booleano r2 = (a == 10.5) || (b == 0.0);
+    booleano r3 = !(a < b) && (c != 0.0);
 
-int x = 100;
-int y = 37;
-int cociente = x / y;
-int residuoMod = x % y;
+    entero x = 100;
+    entero y = 37;
+    entero cociente = x / y;
+    entero residuoMod = x % y;
 
-print(c);
-print(r1);
-print(cociente);
+    imprimir(c);
+    imprimir(r1);
+    imprimir(cociente);
+}
 """),
 ("05 Errores Lexicos", """// Ejemplo 05 - Errores Lexicos Intencionales
-int x = 10;
-float y = 3.14;
-string mensaje = "Hola";
+programa {
+    entero x = 10;
+    decimal y = 3.14;
+    cadena mensaje = "Hola";
 
-// ERROR 1: caracter ilegal @
-int z = 5@2;
+    // ERROR 1: caracter ilegal @
+    entero z = 5@2;
 
-// ERROR 2: caracter ilegal #
-float pi = 3.14#15;
+    // ERROR 2: caracter ilegal #
+    decimal pi = 3.14#15;
 
-// ERROR 3: variable duplicada
-int x = 99;
+    // ERROR 3: variable duplicada
+    entero x = 99;
 
-boolean activo = true;
-int contador = 0;
-while (contador < 5) {
-    contador = contador + 1;
+    booleano activo = verdadero;
+    entero contador = 0;
+    mientras (contador < 5) {
+        contador = contador + 1;
+    }
+    imprimir(x);
 }
-print(x);
 """),
 ("06 Strings y Booleanos", """// Ejemplo 06 - Cadenas y Logica Booleana
-string saludo = "Hola, Mundo!";
-string vacia = "";
+programa {
+    cadena saludo = "Hola, Mundo!";
+    cadena vacia = "";
 
-boolean verdadero = true;
-boolean falso = false;
-boolean nulo = null;
+    booleano flagV = verdadero;
+    booleano flagF = falso;
 
-boolean tt = verdadero && verdadero;
-boolean tf = verdadero && falso;
-boolean ff = falso && falso;
-boolean tt2 = verdadero || verdadero;
+    booleano tt = flagV && flagV;
+    booleano tf = flagV && flagF;
+    booleano ff = flagF && flagF;
+    booleano tt2 = flagV || flagV;
 
-boolean noV = !verdadero;
-boolean noF = !falso;
-boolean complejo = (tt || tf) && (!ff) && (tt2 != ff);
+    booleano noV = !flagV;
+    booleano noF = !flagF;
+    booleano complejo = (tt || tf) && (!ff) && (tt2 != ff);
 
-print(saludo);
-print(complejo);
+    imprimir(saludo);
+    imprimir(complejo);
+}
 """),
 ("07 Programa Completo", """// Ejemplo 07 - Programa Integrador
-// Compiladores 120262294035A
+programa {
+    entero totalAlumnos = 30;
+    decimal sumaNotas = 0.0;
+    decimal promedio = 0.0;
+    entero aprobados = 0;
+    entero reprobados = 0;
+    booleano cursoActivo = verdadero;
+    cadena nombreCurso = "Compiladores";
 
-int totalAlumnos = 30;
-float sumaNotas = 0.0;
-float promedio = 0.0;
-int aprobados = 0;
-int reprobados = 0;
-boolean cursoActivo = true;
-string nombreCurso = "Compiladores 120262294035A";
+    decimal nota1 = 85.0;
+    decimal nota2 = 72.5;
+    decimal nota3 = 91.0;
+    decimal nota4 = 60.0;
+    decimal nota5 = 55.5;
 
-float nota1 = 85.0;
-float nota2 = 72.5;
-float nota3 = 91.0;
-float nota4 = 60.0;
-float nota5 = 55.5;
+    sumaNotas = nota1 + nota2 + nota3 + nota4 + nota5;
+    entero totalMuestras = 5;
+    promedio = sumaNotas / totalMuestras;
 
-sumaNotas = nota1 + nota2 + nota3 + nota4 + nota5;
-int totalMuestras = 5;
-promedio = sumaNotas / totalMuestras;
+    si (nota1 >= 70) { aprobados = aprobados + 1; } sino { reprobados = reprobados + 1; }
+    si (nota2 >= 70) { aprobados = aprobados + 1; } sino { reprobados = reprobados + 1; }
+    si (nota3 >= 70) { aprobados = aprobados + 1; } sino { reprobados = reprobados + 1; }
 
-if (nota1 >= 70) { aprobados = aprobados + 1; } else { reprobados = reprobados + 1; }
-if (nota2 >= 70) { aprobados = aprobados + 1; } else { reprobados = reprobados + 1; }
-if (nota3 >= 70) { aprobados = aprobados + 1; } else { reprobados = reprobados + 1; }
-
-string estadoCurso = "indefinido";
-if (promedio >= 90) {
-    estadoCurso = "Excelente";
-} else {
-    if (promedio >= 75) {
-        estadoCurso = "Bueno";
-    } else {
-        estadoCurso = "Regular";
+    cadena estadoCurso = "indefinido";
+    si (promedio >= 90) {
+        estadoCurso = "Excelente";
+    } sino {
+        si (promedio >= 75) {
+            estadoCurso = "Bueno";
+        } sino {
+            estadoCurso = "Regular";
+        }
     }
+
+    booleano cursoExitoso = cursoActivo && (aprobados > reprobados);
+    entero porcentaje = (aprobados * 100) / totalMuestras;
+
+    imprimir(nombreCurso);
+    imprimir(promedio);
+    imprimir(estadoCurso);
+    imprimir(cursoExitoso);
 }
-
-boolean cursoExitoso = cursoActivo && (aprobados > reprobados);
-int porcentaje = (aprobados * 100) / totalMuestras;
-
-print(nombreCurso);
-print(promedio);
-print(estadoCurso);
-print(cursoExitoso);
 """),
 ]
 
@@ -902,6 +917,13 @@ class MiniIDE(tk.Tk):
         self._btn_ex.bind("<Button-1>", self._toggle_example_menu)
         self._btn_ex.bind("<Enter>", lambda e: self._btn_ex.configure(highlightbackground=C["amber"]))
         self._btn_ex.bind("<Leave>", lambda e: self._btn_ex.configure(highlightbackground=C["bd"]))
+        btn_rep = tk.Label(self._footer, text=" REPORTES HTML ", bg=C["bg3"], fg=C["green"],
+                            font=self.fn_disp, padx=4, pady=6,
+                            highlightthickness=1, highlightbackground=C["bd"], cursor="hand2")
+        btn_rep.pack(side="left", padx=4, pady=5)
+        btn_rep.bind("<Button-1>", lambda e: self._generar_reportes())
+        btn_rep.bind("<Enter>", lambda e: btn_rep.configure(highlightbackground=C["green"]))
+        btn_rep.bind("<Leave>", lambda e: btn_rep.configure(highlightbackground=C["bd"]))
         self._lbl_ft_tok = tk.Label(self._footer, text="Tokens: 0", bg=C["bg2"],
                                      fg=C["t3"], font=("Consolas",9))
         self._lbl_ft_tok.pack(side="right", padx=8)
@@ -1017,6 +1039,8 @@ class MiniIDE(tk.Tk):
         self._lbl_tree_hdr.configure(text="arbol construido")
         self._build_semantic_panel(tokens, simbolos, errores)
 
+        quads = []
+        quads_opt = []
         if errores:
             self._populate_tac([], [])
         else:
@@ -1028,10 +1052,18 @@ class MiniIDE(tk.Tk):
                 self._log("error", f"Error generando codigo intermedio: {ex}")
                 self._populate_tac([], [])
 
+        # Guardar para el boton de reportes HTML
+        self._last_tokens = tokens
+        self._last_tabla = tabla
+        self._last_errores = errores
+        self._last_quads = quads
+        self._last_quads_opt = quads_opt
+
         self._console.configure(state="normal"); self._console.delete("1.0","end")
         if errores:
             self._log("warn", f"Se encontraron {len(errores)} error(es):")
-            for e in errores: self._log("error", f"  X  {e}")
+            for e in errores:
+                self._log("error", f"  X  {fmt_error(e) if isinstance(e, dict) else e}")
             self._lbl_err_hdr.configure(text=f"{len(errores)} error(es)", fg=C["red"])
             self._lbl_status.configure(text=f"{len(errores)} error(es)", fg=C["red"])
         else:
@@ -1115,13 +1147,13 @@ class MiniIDE(tk.Tk):
             tk.Label(row,text=icon,bg=C["bg1"],fg=col,font=("Consolas",11),width=3).pack(side="left",padx=8,pady=5)
             tk.Label(row,text=label,bg=C["bg1"],fg=C["t2"],font=("Consolas",10),anchor="w").pack(side="left",fill="x",expand=True)
             tk.Label(row,text=str(val),bg=C["bg1"],fg=col,font=("Courier New",10,"bold"),padx=12).pack(side="right")
-        TIPOS={"INT","FLOAT","STRING","BOOLEAN"}
-        ifs=sum(1 for t in tokens if t["tipo"]=="IF")
-        whiles=sum(1 for t in tokens if t["tipo"]=="WHILE")
-        fors=sum(1 for t in tokens if t["tipo"]=="FOR")
-        prints=sum(1 for t in tokens if t["tipo"]=="PRINT")
+        TIPOS={"ENTERO","DECIMAL","CADENA_TIPO","BOOLEANO"}
+        ifs=sum(1 for t in tokens if t["tipo"]=="SI")
+        whiles=sum(1 for t in tokens if t["tipo"]=="MIENTRAS")
+        fors=sum(1 for t in tokens if t["tipo"]=="PARA")
+        prints=sum(1 for t in tokens if t["tipo"]=="IMPRIMIR")
         decls=sum(1 for t in tokens if t["tipo"] in TIPOS)
-        asigs=sum(1 for t in tokens if t["tipo"]=="ASIGNACION")
+        asigs=sum(1 for t in tokens if t["tipo"]=="ASIGNAR")
         section("ESTADISTICAS")
         grid=tk.Frame(self._sem_frame,bg=C["bg1"]); grid.pack(fill="x",padx=10,pady=6)
         for idx,(k,col,lbl) in enumerate([(len(tokens),C["cyan"],"Total Tokens"),(len(simbolos),C["green"],"Simbolos"),
@@ -1131,19 +1163,52 @@ class MiniIDE(tk.Tk):
             tk.Label(box,text=str(k),bg=C["bg3"],fg=col,font=("Courier New",18,"bold")).pack()
             tk.Label(box,text=lbl,bg=C["bg3"],fg=C["t3"],font=("Courier New",7)).pack()
         section("ESTRUCTURAS DE CONTROL")
-        for icon,lbl,val in [("*","Condicionales (if)",ifs),("R","Bucles while",whiles),
-                               ("@","Bucles for",fors),(">","Llamadas print()",prints)]:
+        for icon,lbl,val in [("*","Condicionales (si)",ifs),("R","Bucles mientras",whiles),
+                               ("@","Bucles para",fors),(">","Llamadas imprimir()",prints)]:
             stat_row(icon,lbl,val,C["cyan"])
         section("DIAGNOSTICO")
-        lex_e=[e for e in errores if "ilegal" in e.lower()]
-        sem_e=[e for e in errores if "semantico" in e.lower()]
-        if not errores: stat_row("V","Sin errores lexicos ni semanticos","",C["green"])
+        lex_e = [e for e in errores if isinstance(e, dict) and e.get("tipo") == "Lexico"]
+        sint_e = [e for e in errores if isinstance(e, dict) and e.get("tipo") == "Sintactico"]
+        sem_e = [e for e in errores if isinstance(e, dict) and e.get("tipo") == "Semantico"]
+        if not errores: stat_row("V","Sin errores","",C["green"])
         else:
-            if lex_e: stat_row("X",f"{len(lex_e)} error(es) lexico(s)","caracteres ilegales",C["red"])
-            if sem_e: stat_row("X",f"{len(sem_e)} error(es) semantico(s)","variables duplicadas",C["red"])
+            if lex_e:  stat_row("X", f"{len(lex_e)} error(es) lexico(s)", "", C["red"])
+            if sint_e: stat_row("X", f"{len(sint_e)} error(es) sintactico(s)", "", C["red"])
+            if sem_e:  stat_row("X", f"{len(sem_e)} error(es) semantico(s)", "", C["red"])
             for e in errores:
-                col=C["red"] if "ilegal" in e.lower() or "semantico" in e.lower() else C["amber"]
-                stat_row(".",e[:55]+"..." if len(e)>55 else e,"",col)
+                msg = fmt_error(e) if isinstance(e, dict) else str(e)
+                tipo = e.get("tipo", "") if isinstance(e, dict) else ""
+                col = C["red"] if tipo in ("Lexico","Semantico") else (C["amber"] if tipo=="Sintactico" else C["t2"])
+                stat_row(".", msg[:55]+"..." if len(msg)>55 else msg, "", col)
+
+    def _generar_reportes(self):
+        """Genera todos los reportes HTML del ultimo analisis."""
+        if not hasattr(self, "_last_tokens") or self._last_tokens is None:
+            self._log("warn", "Primero ejecuta el analisis (F5) antes de generar reportes.")
+            return
+        salida = filedialog.askdirectory(title="Carpeta destino para los reportes HTML")
+        if not salida:
+            return
+        tac_filas = formatear_tac(self._last_quads) if self._last_quads else []
+        tac_opt_filas = formatear_tac(self._last_quads_opt) if self._last_quads_opt else []
+        try:
+            rutas = _reportes_mod.generar_reportes_completos(
+                salida,
+                tokens=self._last_tokens,
+                tabla=self._last_tabla,
+                errores=self._last_errores,
+                tac=tac_filas,
+                tac_opt=tac_opt_filas,
+            )
+            self._log("ok", f"{len(rutas)} reporte(s) HTML generado(s) en {salida}")
+            for k, r in rutas.items():
+                self._log("info", f"  - {k}: {os.path.basename(r)}")
+            try:
+                webbrowser.open("file://" + os.path.abspath(rutas.get("semanticos") or list(rutas.values())[0]))
+            except Exception:
+                pass
+        except Exception as ex:
+            self._log("error", f"No se pudieron generar los reportes: {ex}")
 
     def _log(self,level,msg):
         self._console.configure(state="normal")

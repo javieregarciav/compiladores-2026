@@ -1,0 +1,927 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[spanish,es-tabla,es-noshorthands]{babel}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+
+\definecolor{azulOscuro}{HTML}{1E3C78}
+\definecolor{azulMedio}{HTML}{2A5BB1}
+\definecolor{azulSuave}{HTML}{E8EEFA}
+\definecolor{grisCodigo}{HTML}{F5F6FA}
+\definecolor{grisBorde}{HTML}{D0D4DD}
+\definecolor{kw}{HTML}{0033B3}
+\definecolor{str}{HTML}{067D17}
+\definecolor{com}{HTML}{8C8C8C}
+\definecolor{verdeTAC}{HTML}{2D7D46}
+\definecolor{rojoOpt}{HTML}{B23B3B}
+\definecolor{naranjaPausa}{HTML}{E08600}
+\definecolor{moradoSem}{HTML}{8E44AD}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=azulMedio,
+  urlcolor=azulMedio,
+  pdftitle={Compiladores 2026 - Guia Fase 2}
+}
+
+\titleformat{\section}
+  {\color{azulOscuro}\Large\bfseries}
+  {\thesection.}{0.6em}{}
+\titleformat{\subsection}
+  {\color{azulMedio}\large\bfseries}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\color{azulMedio}\normalsize\bfseries}
+  {\thesubsubsection.}{0.5em}{}
+
+\lstdefinestyle{py}{
+  language=Python,
+  backgroundcolor=\color{grisCodigo},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{kw}\bfseries,
+  stringstyle=\color{str},
+  commentstyle=\color{com}\itshape,
+  frame=single, framerule=0.4pt, rulecolor=\color{grisBorde},
+  numbers=none, showstringspaces=false, breaklines=true,
+  xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt,
+  inputencoding=utf8, extendedchars=true,
+  literate=
+    {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+    {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+    {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {¡}{{!`}}1 {¿}{{?`}}1,
+}
+\lstdefinestyle{tac}{
+  backgroundcolor=\color{grisCodigo},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single, framerule=0.4pt, rulecolor=\color{grisBorde},
+  numbers=none, showstringspaces=false, breaklines=true,
+  xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt,
+}
+\lstdefinestyle{ml}{
+  backgroundcolor=\color{azulSuave},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single, framerule=0.4pt, rulecolor=\color{azulMedio},
+  numbers=none, showstringspaces=false, breaklines=true,
+  xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt,
+}
+
+\newtcolorbox{caja}[1]{
+  colback=grisCodigo, colframe=azulMedio,
+  title=\textbf{#1}, fonttitle=\color{white},
+  boxrule=0.5pt, arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt, after skip=8pt,
+}
+\newtcolorbox{pausa}[1]{
+  colback=naranjaPausa!10, colframe=naranjaPausa,
+  title=\textbf{#1}, fonttitle=\color{white},
+  boxrule=0.7pt, arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt, after skip=8pt,
+}
+\newtcolorbox{concepto}[1]{
+  colback=verdeTAC!10, colframe=verdeTAC,
+  title=\textbf{#1}, fonttitle=\color{white},
+  boxrule=0.6pt, arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt, after skip=8pt,
+}
+\newtcolorbox{rubrica}[1]{
+  colback=moradoSem!10, colframe=moradoSem,
+  title=\textbf{#1}, fonttitle=\color{white},
+  boxrule=0.6pt, arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt, after skip=8pt,
+}
+
+\title{\vspace{-1.2cm}\color{azulOscuro}\textbf{Compiladores 2026 --- Fase 2}\\[0.3em]
+\large\color{black}Frontend/Backend, Codigo de Tres Direcciones, Optimizacion y Reportes HTML}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.2cm}
+
+\section{Mapa de la presentacion}
+
+\begin{enumerate}[leftmargin=*,nosep]
+  \item Resumen ejecutivo: que se entrega en esta fase 2.
+  \item Arquitectura: separacion \textbf{Frontend / Backend}.
+  \item \textbf{PAUSA teorica:} tipos de codigo intermedio y cual usamos.
+  \item Codigo de Tres Direcciones (TAC).
+  \item Pipeline PLY: \texttt{lex} + \texttt{yacc} produciendo el AST.
+  \item Generacion del TAC a partir del AST.
+  \item Analisis semantico --- \texttt{check\_semantic}.
+  \item \textbf{PAUSA pedagogica:} visualizacion y reportes HTML.
+  \item Optimizacion del TAC.
+  \item Pruebas y QA contra la rubrica.
+\end{enumerate}
+
+\section{Resumen ejecutivo}
+
+\begin{caja}{Que entregamos en la fase 2}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Reestructuracion del codigo en \texttt{frontend/} y \texttt{backend/}
+        con un contrato compartido (\texttt{intermedio.py}).
+  \item \textbf{Generador de codigo de tres direcciones (TAC)} sobre el
+        AST que produce el parser PLY yacc.
+  \item \textbf{Analisis semantico} (\texttt{check\_semantic}) que detecta
+        tipos incompatibles, variables no declaradas, condiciones invalidas,
+        division por cero, etc., con \emph{linea y columna} por error.
+  \item \textbf{Optimizador} con cinco pasadas iterando hasta punto fijo.
+  \item \textbf{Reportes HTML} estructurados de tokens, tabla de simbolos,
+        errores (con separado para semanticos), TAC original y TAC optimizado.
+  \item UI dual: escritorio (\texttt{Tkinter}, \texttt{main.py}) y web
+        (\texttt{index.php} + \texttt{analizar.php}) que muestran
+        todo el pipeline al usuario.
+  \item Suite de QA (\texttt{qa\_rubrica.py}) con 42 casos automaticos
+        cubriendo los cinco criterios de la rubrica.
+\end{itemize}
+\end{caja}
+
+\section{Arquitectura: Frontend / Backend}
+
+\subsection{El principio}
+
+Un compilador moderno separa lo que depende del \emph{lenguaje fuente}
+(frontend) de lo que depende de la \emph{maquina destino} (backend). Entre
+los dos esta la \textbf{representacion intermedia} (IR), que es el
+contrato comun.
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.4cm and 1.0cm,
+  every node/.style={font=\small\sffamily,align=center},
+  caja/.style={draw=azulMedio,fill=azulSuave,thick,rounded corners=2pt,
+               minimum width=2.6cm,minimum height=1.0cm},
+  arr/.style={-{Stealth[length=2.5mm]},thick,azulMedio}]
+\node[caja] (fe) {FRONTEND\\\scriptsize lenguaje fuente};
+\node[caja, right=of fe] (ir) {IR\\\scriptsize TAC};
+\node[caja, right=of ir] (be) {BACKEND\\\scriptsize maquina destino};
+\draw[arr] (fe) -- (ir);
+\draw[arr] (ir) -- (be);
+\node[below=0.1cm of fe,font=\scriptsize] {PLY lex + yacc};
+\node[below=0.1cm of ir,font=\scriptsize] {Quad (op,a1,a2,d)};
+\node[below=0.1cm of be,font=\scriptsize] {Optimizador};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Como lo aplicamos}
+
+\begin{lstlisting}[style=tac]
+compiladores-2026/
+|-- frontend/                       <- depende del lenguaje fuente
+|   |-- __init__.py                 reexporta API publica
+|   |-- lexer.py                    PLY: tokens + tabla de simbolos
+|   |-- tabla_simbolos.py           Simbolo + TablaSimbolos con ambitos
+|   |-- errores.py                  agregar_lexico/sintactico/semantico
+|   |-- parser.py                   PLY yacc: AST + check_semantic
+|   `-- generador_intermedio.py     AST -> TAC
+|
+|-- intermedio.py                   <- contrato compartido (IR)
+|   `-- Quad(op, arg1, arg2, dest), formatear_tac(...)
+|
+|-- backend/                        <- depende de la maquina objetivo
+|   |-- __init__.py
+|   `-- optimizador.py              5 pasadas hasta punto fijo
+|
+|-- reportes.py                     reportes HTML (semanticos, TAC, etc.)
+|-- bridge.py                       pipeline -> JSON
+|-- main.py                         UI Tkinter
+|-- index.php / analizar.php        UI web
+\end{lstlisting}
+
+\begin{lstlisting}[style=py]
+# frontend/__init__.py
+from .lexer            import Lexer
+from .tabla_simbolos   import TablaSimbolos, Simbolo
+from .parser           import build_tree, get_kids, node_label, \
+                              TIPOS_DATO, RESERVED, check_semantic
+from .generador_intermedio import GeneradorTAC
+
+# backend/__init__.py
+from .optimizador import optimizar
+\end{lstlisting}
+
+\textbf{Punto de discusion:} \texttt{intermedio.py} no importa de
+\texttt{frontend} ni de \texttt{backend}. Es la \emph{frontera}: cualquier
+modulo que respete \texttt{Quad} puede leer o escribir TAC.
+
+\section{PAUSA: tipos de codigo intermedio}
+
+\begin{pausa}{Pausa teorica en la presentacion}
+Antes de mostrar nuestro generador de TAC conviene explicar \textbf{que
+tipos de codigo intermedio existen} y \textbf{cual elegimos}.
+\end{pausa}
+
+\subsection{Los tres tipos clasicos}
+
+\begin{concepto}{1. Notacion postfija (Reverse Polish)}
+La operacion se escribe \emph{despues} de los operandos. \\
+\textbf{Ejemplo:} \texttt{a + b * c} se vuelve \texttt{a b c * +}. \\
+\textbf{Ventaja:} compacta y facil de evaluar con una pila. \\
+\textbf{Desventaja:} no representa flujo de control (saltos, etiquetas),
+solo expresiones aritmeticas.
+\end{concepto}
+
+\begin{concepto}{2. Arbol Sintactico Abstracto (AST)}
+Estructura de arbol: cada nodo es una operacion o un literal y los hijos
+son los operandos. \\
+\textbf{Ejemplo:} \texttt{a + b * c} es un nodo \texttt{+} cuyos hijos
+son \texttt{a} y un sub-nodo \texttt{*} con hijos \texttt{b} y \texttt{c}. \\
+\textbf{Ventaja:} mantiene la estructura del programa, ideal para
+analisis semantico. \\
+\textbf{Desventaja:} no es lineal, no se ejecuta secuencialmente sin
+recorrerlo.
+\end{concepto}
+
+\begin{concepto}{3. Codigo de Tres Direcciones (TAC)}
+Cada instruccion tiene a lo mas tres operandos: dos fuentes y un destino.
+Forma canonica: \texttt{dest = arg1 op arg2}. \\
+\textbf{Ejemplo:} \texttt{a + b * c} se descompone en dos cuadruplos. \\
+\textbf{Ventaja:} lineal (una instruccion por linea), explicito
+(temporales con nombre), parecido al ensamblador. \\
+\textbf{Desventaja:} mas voluminoso que la postfija.
+\end{concepto}
+
+\begin{lstlisting}[style=tac]
+$t1 = b * c
+$t2 = a + $t1
+\end{lstlisting}
+
+\subsection{Cual usa nuestro compilador?}
+
+\begin{caja}{Decision de diseno}
+El compilador produce y usa internamente \textbf{dos representaciones}:
+\begin{enumerate}[leftmargin=*,nosep]
+  \item \textbf{AST} producido por \texttt{build\_tree()} en
+        \texttt{frontend/parser.py}. Lo usamos para analisis semantico,
+        para visualizar el arbol y como entrada del generador de TAC.
+  \item \textbf{Codigo de Tres Direcciones (TAC)} producido por
+        \texttt{GeneradorTAC.generar()} en
+        \texttt{frontend/generador\_intermedio.py}. Es el formato sobre
+        el que trabaja el optimizador (\texttt{backend/optimizador.py}).
+\end{enumerate}
+\textbf{No usamos notacion postfija} porque no permite expresar saltos
+ni asignaciones, que son basicos en este lenguaje.
+\end{caja}
+
+\section{Codigo de Tres Direcciones}
+
+\subsection{Estructura del cuadruplo}
+
+\begin{lstlisting}[style=py]
+# intermedio.py
+@dataclass
+class Quad:
+    op:   str                       # operacion o palabra clave
+    arg1: Optional[str] = None      # primer operando
+    arg2: Optional[str] = None      # segundo operando
+    dest: Optional[str] = None      # destino o etiqueta destino
+\end{lstlisting}
+
+\subsection{Conjunto de instrucciones del IR}
+
+\begin{lstlisting}[style=tac]
+Asignacion:        dest = arg1                     op = "="
+Operacion binaria: dest = arg1 op arg2             op in {+,-,*,/,%,==,!=,<,>,<=,>=,&&,||}
+Operacion unaria:  dest = ! arg1                   op = "!"
+Etiqueta:          L:                              op = "label", dest = L
+Salto:             goto L                          op = "goto", dest = L
+Salto condicional: ifFalse arg1 goto L             op = "if_false", dest = L
+Imprimir:          imprimir arg1                   op = "print"
+Leer:              leer dest                       op = "read", dest = nombre
+\end{lstlisting}
+
+\subsection{Pretty-printer \texttt{formatear\_tac}}
+
+\begin{lstlisting}[style=py]
+def formatear_tac(quads):
+    filas, n = [], 0
+    for q in quads:
+        op, a1, a2, d = q.op, q.arg1, q.arg2, q.dest
+        if   op == "label":     instr = f"{d}:"
+        elif op == "goto":      instr = f"goto {d}"
+        elif op == "if_false":  instr = f"ifFalse {a1} goto {d}"
+        elif op == "=":         instr = f"{d} = {a1}"
+        elif op == "print":     instr = f"imprimir {a1}"
+        elif op == "read":      instr = f"leer {d}"
+        elif op == "!":         instr = f"{d} = !{a1}"
+        else:                   instr = f"{d} = {a1} {op} {a2}"
+        n += 1
+        filas.append({"n": n, "instruccion": instr,
+                      "op": op, "arg1": a1 or "-",
+                      "arg2": a2 or "-", "dest": d or "-"})
+    return filas
+\end{lstlisting}
+
+\section{Pipeline PLY: lex + yacc}
+
+\subsection{Lexer con PLY}
+
+\begin{lstlisting}[style=py]
+# frontend/lexer.py
+import ply.lex as lex
+from . import errores as _errores_mod
+
+reservadas = {
+    "programa": "PROGRAMA",
+    "entero":   "ENTERO",   "decimal":  "DECIMAL",
+    "cadena":   "CADENA_TIPO", "booleano": "BOOLEANO",
+    "si": "SI", "sino": "SINO",
+    "mientras": "MIENTRAS", "hacer_mientras": "HACER_MIENTRAS",
+    "para": "PARA", "imprimir": "IMPRIMIR", "leer": "LEER",
+    "verdadero": "VERDADERO", "falso": "FALSO",
+    "funcion": "FUNCION", "procedimiento": "PROCEDIMIENTO",
+    "retornar": "RETORNAR",
+}
+
+t_MAS = r'\+';  t_MENOS = r'-';  t_MULTIPLICACION = r'\*';
+t_DIVIDIR = r'/';  t_MODULO = r'%';
+t_IGUAL = r'==';  t_DIFERENTE = r'!='
+t_MENOR_IGUAL = r'<=';  t_MAYOR_IGUAL = r'>='
+t_AND = r'&&';  t_OR = r'\|\|';  t_NOT = r'!'
+...
+
+def t_IDENTIFICADOR(t):
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
+    t.type = reservadas.get(t.value, 'IDENTIFICADOR')
+    return t
+
+def t_error(t):
+    col = encontrar_columna(t.lexer.lexdata, t)
+    _errores_mod.agregar_lexico(
+        f"Caracter ilegal '{t.value[0]}'",
+        t.lineno, col, valor=t.value[0],
+    )
+    t.lexer.skip(1)
+\end{lstlisting}
+
+\textbf{Que hace:}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Define tokens con regex como atributos \texttt{t\_XXX} (PLY los
+        recoge por convencion de nombre).
+  \item Las palabras reservadas se distinguen del identificador
+        \emph{post-match}: si el \texttt{IDENTIFICADOR} matchea
+        \texttt{"programa"}, se reclasifica a \texttt{PROGRAMA}.
+  \item Los errores lexicos se acumulan en el modulo \texttt{errores}
+        (con linea y columna).
+\end{itemize}
+
+\subsection{Parser con PLY yacc}
+
+\begin{lstlisting}[style=py]
+# frontend/parser.py
+import ply.yacc as yacc
+
+precedence = (
+    ('left',  'OR'),
+    ('left',  'AND'),
+    ('left',  'IGUAL', 'DIFERENTE'),
+    ('left',  'MENOR', 'MAYOR', 'MENOR_IGUAL', 'MAYOR_IGUAL'),
+    ('left',  'MAS', 'MENOS'),
+    ('left',  'MULTIPLICACION', 'DIVIDIR', 'MODULO'),
+    ('right', 'NOT', 'UMENOS'),
+)
+
+def p_programa(p):
+    '''programa : PROGRAMA LLAVE_IZQ sentencias LLAVE_DER
+                | sentencias'''
+    if len(p) == 5:
+        p[0] = {"type": "Program", "children": p[3]}
+    else:
+        p[0] = {"type": "Program", "children": p[1]}
+
+def p_declaracion(p):
+    '''declaracion : tipo IDENTIFICADOR ASIGNAR expresion PUNTO_COMA'''
+    p[0] = {
+        "type":     "Declaration",
+        "dataType": p[1],
+        "id":       _tok_de_p(p, 2, tipo="IDENTIFICADOR"),
+        "expr":     p[4],
+    }
+
+def p_expresion_binaria(p):
+    '''expresion : expresion MAS expresion
+                 | expresion MENOS expresion
+                 ...
+                 | expresion AND expresion
+                 | expresion OR expresion'''
+    op_tok = {"tipo": p.slice[2].type,
+              "valor": _OP_TIPOS.get(p.slice[2].type, str(p[2])),
+              "linea": p.lineno(2), "columna": col}
+    p[0] = {"type": "BinaryOp", "op": op_tok, "left": p[1], "right": p[3]}
+\end{lstlisting}
+
+\textbf{Decision clave:} las acciones semanticas del parser \emph{no
+producen tuplas} (como hacia la fase 1) sino \textbf{dicts en formato AST}
+que el resto del pipeline (visitor del TAC, semantico, visualizacion del
+arbol) ya entiende.
+
+\subsection{Sintaxis del lenguaje}
+
+\begin{lstlisting}[style=ml]
+programa {
+    entero edad = 25;
+    decimal salario = 15750.50;
+    cadena nombre = "Ana Garcia";
+    booleano activo = verdadero;
+
+    si (edad >= 18 && activo) {
+        imprimir(nombre);
+    } sino {
+        imprimir("menor");
+    }
+
+    mientras (edad > 0) { edad = edad - 1; }
+    para (entero i = 0; i < 5; i = i + 1) { imprimir(i); }
+}
+\end{lstlisting}
+
+\section{Generacion del TAC}
+
+\subsection{Visitor por tipo de nodo}
+
+\begin{lstlisting}[style=py]
+class GeneradorTAC:
+    def __init__(self):
+        self.codigo: list[Quad] = []
+        self._t = 0   # contador de temporales
+        self._l = 0   # contador de etiquetas
+
+    def _nuevo_temp(self):  self._t += 1; return f"$t{self._t}"
+    def _nueva_etiq(self):  self._l += 1; return f"$L{self._l}"
+    def emit(self, op, a1=None, a2=None, d=None):
+        self.codigo.append(Quad(op, a1, a2, d))
+
+    def generar(self, ast):
+        self.codigo = []; self._t = 0; self._l = 0
+        if ast: self._gen(ast)
+        return self.codigo
+
+    def _gen(self, node):
+        if not node: return None
+        method = getattr(self, f"_g_{node['type']}", self._g_default)
+        return method(node)
+\end{lstlisting}
+
+\textbf{Patron visitor:} para un nodo \texttt{If} se llama
+\texttt{\_g\_If}, para \texttt{BinaryOp} se llama \texttt{\_g\_BinaryOp},
+y asi. Sin \texttt{if/elif} repetitivos.
+
+\subsection{Expresiones binarias en post-orden}
+
+\begin{lstlisting}[style=py]
+if t == "BinaryOp":
+    izq = self._g_expr(node["left"])
+    der = self._g_expr(node["right"])
+    tmp = self._nuevo_temp()
+    op  = _BIN_TIPOS.get(node["op"]["tipo"], node["op"]["valor"])
+    self.emit(op, izq, der, tmp)
+    return tmp
+\end{lstlisting}
+
+\textbf{Como funciona:} primero se genera el TAC del subarbol izquierdo
+y se obtiene el lugar donde quedo su resultado; lo mismo con el derecho;
+despues se emite \texttt{tmp = izq op der}. Los temporales se encadenan
+naturalmente.
+
+\subsection{Estructuras de control}
+
+\textbf{Si / sino:}
+\begin{lstlisting}[style=py]
+def _g_If(self, node):
+    cond   = self._g_expr(node["cond"])
+    L_else = self._nueva_etiq()
+    L_end  = self._nueva_etiq() if node.get("elseBody") else L_else
+    self.emit("if_false", cond, None, L_else)
+    self._gen(node["body"])
+    if node.get("elseBody"):
+        self.emit("goto",  None, None, L_end)
+        self.emit("label", None, None, L_else)
+        self._gen(node["elseBody"])
+        self.emit("label", None, None, L_end)
+    else:
+        self.emit("label", None, None, L_else)
+\end{lstlisting}
+
+\textbf{Mientras:}
+\begin{lstlisting}[style=py]
+def _g_While(self, node):
+    L_inicio = self._nueva_etiq()
+    L_fin    = self._nueva_etiq()
+    self.emit("label",    None, None, L_inicio)
+    cond = self._g_expr(node["cond"])
+    self.emit("if_false", cond, None, L_fin)
+    self._gen(node["body"])
+    self.emit("goto",     None, None, L_inicio)
+    self.emit("label",    None, None, L_fin)
+\end{lstlisting}
+
+\subsection{Ejemplo end-to-end}
+
+\textbf{Fuente:}
+\begin{lstlisting}[style=ml]
+programa {
+    entero a = 3;
+    entero b = 4;
+    entero c = (a + b) * 2;
+    si (c > 10) { imprimir(c); } sino { imprimir("pequeno"); }
+}
+\end{lstlisting}
+
+\textbf{TAC generado (12 cuadruplos):}
+\begin{lstlisting}[style=tac]
+ 1: a = 3
+ 2: b = 4
+ 3: $t1 = a + b
+ 4: $t2 = $t1 * 2
+ 5: c = $t2
+ 6: $t3 = c > 10
+ 7: ifFalse $t3 goto $L1
+ 8: imprimir c
+ 9: goto $L2
+10: $L1:
+11: imprimir "pequeno"
+12: $L2:
+\end{lstlisting}
+
+\textbf{TAC optimizado (7 cuadruplos --- reduccion 41.7\%):}
+\begin{lstlisting}[style=tac]
+ 1: a = 3
+ 2: b = 4
+ 3: c = 14
+ 4: imprimir 14
+ 5: goto $L2
+ 6: imprimir "pequeno"
+ 7: $L2:
+\end{lstlisting}
+
+\textbf{Punto de discusion:} la propagacion de constantes y el folding
+calculan \texttt{(3+4)*2 = 14} en tiempo de compilacion. Los temporales
+muertos se eliminan. La \emph{rama muerta} (linea 6) se conserva porque
+no podemos garantizar staticamente que ese imprimir no sera alcanzado
+desde otro flujo, pero los temporales asociados ya estan plegados.
+
+\section{Analisis semantico --- \texttt{check\_semantic}}
+
+\begin{rubrica}{Criterio 1 de la rubrica (25 pts)}
+La rubrica exige detectar errores semanticos. Nuestro
+\texttt{check\_semantic} recorre el AST e identifica:
+\begin{itemize}[leftmargin=*,nosep]
+  \item Variables \textbf{no declaradas} en uso, asignacion o lectura.
+  \item Variables \textbf{duplicadas} en el mismo ambito (lo detecta la
+        tabla de simbolos al insertar).
+  \item \textbf{Tipos incompatibles} en declaracion o asignacion
+        (\texttt{entero = "hola"}, \texttt{booleano = 5}\dots).
+  \item \textbf{Condiciones} de \texttt{si}/\texttt{mientras}/
+        \texttt{hacer\_mientras}/\texttt{para} que no son booleanas.
+  \item \textbf{Division por cero} con denominador literal.
+  \item \textbf{Operacion aritmetica} entre tipos incompatibles
+        (e.g.\ \texttt{booleano + entero}).
+  \item \textbf{Comparaciones} y \textbf{operaciones logicas} entre
+        tipos invalidos.
+  \item \textbf{Operadores unarios} \texttt{-} y \texttt{!} aplicados a
+        tipo erroneo.
+  \item Funcion no definida en llamadas.
+  \item \emph{Widening} permitido: \texttt{decimal = entero} se acepta
+        sin error (promocion entero $\rightarrow$ decimal).
+\end{itemize}
+\textbf{Cada error reporta linea y columna.}
+\end{rubrica}
+
+\subsection{Compatibilidad de tipos}
+
+\begin{lstlisting}[style=py]
+def _tipo_compatible(declarado, expresion):
+    if declarado == expresion:
+        return True
+    if declarado == "decimal" and expresion == "entero":
+        return True   # widening entero -> decimal
+    return False
+\end{lstlisting}
+
+\subsection{Inferencia de tipos en expresiones}
+
+\begin{lstlisting}[style=py]
+def get_type(node):
+    if t == "Literal":   return _tipo_literal(node["token"])
+    if t == "StringLit": return "cadena"
+    if t == "BoolLit":   return "booleano"
+    if t == "Identifier":
+        sym = tabla.buscar(node["token"]["valor"])
+        if not sym:
+            _sem("Variable '...' no declarada", linea, col)
+            return None
+        return sym.tipo
+    if t == "BinaryOp":
+        lt = get_type(node["left"]); rt = get_type(node["right"])
+        op = node["op"]["tipo"]
+        # Division por cero
+        if op in ("DIVIDIR", "MODULO") and node["right"].get("type") == "Literal":
+            if float(node["right"]["token"]["valor"]) == 0:
+                _sem("Division por cero", op_lin, op_col)
+        # Aritmetica entre numericos
+        if op in ("MAS","MENOS","MULTIPLICACION","DIVIDIR","MODULO"):
+            if lt == "entero" and rt == "entero":  return "entero"
+            if lt in ("entero","decimal") and rt in ("entero","decimal"):
+                return "decimal"
+            _sem(f"Operacion aritmetica incompatible entre '{lt}' y '{rt}'",
+                 op_lin, op_col)
+            return None
+        ...
+\end{lstlisting}
+
+\subsection{Reglas por sentencia}
+
+\begin{lstlisting}[style=py]
+def check_node(node):
+    if t == "Declaration":
+        et = get_type(node["expr"])
+        vt = _TIPO_VAR_DE_TOKEN[node["dataType"]["tipo"]]
+        if et and not _tipo_compatible(vt, et):
+            _sem(f"Asignacion incompatible: '{vt}' no puede recibir '{et}'",
+                 linea, col)
+    elif t == "Assignment":
+        sym = tabla.buscar(node["id"]["valor"])
+        if not sym:
+            _sem(f"Variable no declarada", linea, col)
+        else:
+            et = get_type(node["expr"])
+            if et and not _tipo_compatible(sym.tipo, et):
+                _sem(f"Asignacion incompatible", linea, col)
+    elif t == "If":
+        ct = get_type(node["cond"])
+        if ct and ct != "booleano":
+            _sem(f"Condicion del 'si' debe ser booleana, no '{ct}'", ...)
+        check_node(node["body"])
+        ...
+\end{lstlisting}
+
+\section{PAUSA: visualizacion y reportes HTML}
+
+\begin{pausa}{Pausa pedagogica}
+Aqui se hace pausa para mostrar como el compilador \emph{exhibe} su
+trabajo. Esto cumple dos criterios de la rubrica: el reporte HTML
+de errores semanticos (criterio 2, 20 pts) y el funcionamiento general
+del compilador (criterio 5, 10 pts).
+\end{pausa}
+
+\subsection{UI Tkinter (\texttt{main.py})}
+
+Una sola clase \texttt{MiniIDE(tk.Tk)} con seis pestanias:
+\begin{itemize}[leftmargin=*,nosep]
+  \item \textbf{Editor} con coloreado de tokens en vivo.
+  \item \textbf{Tokens} con tipo, valor, linea y columna.
+  \item \textbf{Arbol} (AST) renderizado en canvas.
+  \item \textbf{Semantico} con tabla de simbolos.
+  \item \textbf{Codigo Intermedio} con TAC original, TAC optimizado y metricas.
+  \item \textbf{Errores} con consola dedicada.
+\end{itemize}
+
+Atajo: \texttt{F5} = Analizar. Boton \textbf{REPORTES HTML} en la barra
+inferior que invoca \texttt{reportes.generar\_reportes\_completos(\dots)}.
+
+\subsection{UI web (\texttt{index.php} + \texttt{analizar.php})}
+
+\begin{lstlisting}[style=py]
+# analizar.php llama a bridge.py via exec()
+$tmpFile = tempnam(sys_get_temp_dir(), 'minicomp_') . '.programa';
+file_put_contents($tmpFile, $codigo);
+$python  = (PHP_OS_FAMILY === 'Windows') ? 'python' : 'python3';
+$cmd     = escapeshellcmd($python).' '
+         . escapeshellarg(__DIR__.'/bridge.py').' '
+         . escapeshellarg($tmpFile).' 2>&1';
+exec($cmd, $output, $returnCode);
+@unlink($tmpFile);
+echo json_encode(json_decode(implode("\n",$output),true), JSON_UNESCAPED_UNICODE);
+\end{lstlisting}
+
+\subsection{\texttt{reportes.py}: HTML estructurado}
+
+\begin{rubrica}{Criterio 2 de la rubrica (20 pts) --- el HTML semantico}
+El archivo \texttt{reportes.py} genera HTMLs profesionales con CSS
+moderno y consistente. La rubrica pide especificamente un reporte
+\emph{estructurado, claro y funcional con linea y columna de cada error
+semantico}: ese es \texttt{generar\_html\_errores\_semanticos()}.
+\end{rubrica}
+
+\textbf{Funciones expuestas:}
+
+\begin{lstlisting}[style=py]
+# reportes.py
+generar_html_errores_semanticos(errores, ruta)   # << el clave (rubrica)
+generar_html_errores(errores, ruta)              # todos los errores
+generar_html_tokens(tokens, ruta)
+generar_html_tabla_simbolos(tabla, ruta)
+generar_html_tac(quads_formateados, ruta, titulo)
+generar_reportes_completos(directorio, ...)      # todo de una
+\end{lstlisting}
+
+\textbf{Lo que muestra el reporte semantico:}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Encabezado con fecha y resumen estadistico por categoria
+        (variables no declaradas, tipos incompatibles, division por
+        cero, condiciones no booleanas, etc.).
+  \item Tabla principal con columnas: \texttt{\#}, tipo (tag
+        coloreado), \textbf{linea}, \textbf{columna}, identificador
+        afectado, descripcion.
+  \item Mensaje verde de "sin errores" si la lista esta vacia.
+\end{itemize}
+
+\textbf{Estructura del HTML} (extracto del CSS):
+
+\begin{lstlisting}[style=tac]
+header { gradient azul + titulo + fecha }
+.summary { chips estadisticos por categoria }
+table {
+    thead   th  bg=primario, fg=blanco
+    tbody   alternancia de filas, hover, monospace para identificadores
+    .tag    coloreado por tipo (lex=rojo, sint=amarillo, sem=morado)
+}
+\end{lstlisting}
+
+\textbf{Como se genera:}
+
+\begin{itemize}[leftmargin=*,nosep]
+  \item Desde Tkinter: boton "REPORTES HTML" $\rightarrow$ abre el HTML
+        de errores semanticos en el navegador.
+  \item Desde CLI: \texttt{python bridge.py archivo.programa --reportes salida/}
+        crea todos los archivos en \texttt{salida/}.
+\end{itemize}
+
+\section{Optimizacion del TAC}
+
+\subsection{Driver con punto fijo}
+
+\begin{lstlisting}[style=py]
+def optimizar(codigo, max_iter: int = 12):
+    actual = deepcopy(codigo); traza = []
+    pasadas = [
+        ("Constant Folding & Algebraic", _constant_folding),
+        ("Constant / Copy Propagation",  _propagation),
+        ("Branch Pruning",               _branch_pruning),
+        ("Dead-Code Elimination",        _dead_code),
+        ("Jump Threading",               _jump_threading),
+    ]
+    for it in range(max_iter):
+        cambio_global = False
+        for nombre, fn in pasadas:
+            antes = len(actual)
+            actual, cambio = fn(actual)
+            if cambio:
+                traza.append({"iter": it+1, "pasada": nombre,
+                              "antes": antes, "despues": len(actual),
+                              "delta": len(actual) - antes})
+                cambio_global = True
+        if not cambio_global: break
+    return actual, traza
+\end{lstlisting}
+
+\textbf{Que hace:} aplica las cinco pasadas \emph{en orden} y repite el
+ciclo hasta que una iteracion completa no haga ningun cambio (punto
+fijo). Cada modificacion se registra en \texttt{traza}.
+
+\subsection{Pasada 1 --- Constant Folding}
+
+\textbf{Idea:} si los dos operandos son constantes, evaluar en tiempo
+de compilacion. Si uno es identidad algebraica (\texttt{x+0},
+\texttt{x*1}, \texttt{x*0}), reescribir.
+
+\begin{lstlisting}[style=py]
+if q.op == "+" and a1 == "0":
+    nuevo.append(Quad("=", a2, None, q.dest));  cambio=True;  continue
+if q.op == "*" and (a1 == "0" or a2 == "0"):
+    nuevo.append(Quad("=", "0", None, q.dest)); cambio=True;  continue
+if _es_numero(a1) and _es_numero(a2):
+    r = _BIN_OPS[q.op](_to_num(a1), _to_num(a2))
+    nuevo.append(Quad("=", _fmt(r), None, q.dest)); cambio=True
+\end{lstlisting}
+
+\subsection{Pasada 2 --- Constant / Copy Propagation}
+
+\textbf{Idea:} mantener un entorno con los valores conocidos. Cuando se
+ve \texttt{x = 5}, recordar \texttt{env["x"] = "5"} y reemplazar usos
+posteriores. El entorno se invalida al cruzar etiquetas o saltos.
+
+\subsection{Pasada 3 --- Branch Pruning}
+
+\textbf{Idea:} si la propagacion dejo la condicion de un salto como
+literal (\texttt{verdadero}/\texttt{falso}), eliminar el salto inutil
+o convertirlo en \texttt{goto} incondicional.
+
+\begin{lstlisting}[style=py]
+_VERDADERO = frozenset(("true", "True", "1", "verdadero", "Verdadero"))
+_FALSO     = frozenset(("false", "False", "0", "falso", "Falso"))
+
+if q.op == "if_false":
+    if q.arg1 in _VERDADERO:  cambio=True;  continue   # nunca salta
+    if q.arg1 in _FALSO:                                 # siempre salta
+        nuevo.append(Quad("goto", None, None, q.dest)); cambio=True
+\end{lstlisting}
+
+\subsection{Pasada 4 --- Dead-Code Elimination}
+
+\textbf{Idea:} eliminar los cuadruplos cuyo destino es un temporal que
+no se lee en ningun lado.
+
+\begin{lstlisting}[style=py]
+leidos = {a for q in codigo for a in (q.arg1, q.arg2) if a}
+for q in codigo:
+    if q.op == "=" or q.op in _BIN_OPS or q.op == "!":
+        if q.dest and _es_temp(q.dest) and q.dest not in leidos:
+            cambio=True;  continue   # se descarta
+    nuevo.append(q)
+\end{lstlisting}
+
+\textbf{Importante:} solo se eliminan temporales (\texttt{\$tN}). Las
+variables del usuario nunca se borran aunque parezcan muertas.
+
+\subsection{Pasada 5 --- Jump Threading}
+
+\textbf{Idea (a):} si encontramos \texttt{goto L} seguido de
+\texttt{L:}, eliminamos el \texttt{goto}. \\
+\textbf{Idea (b):} las etiquetas que ya no son referenciadas se borran.
+
+\subsection{Como cooperan las pasadas}
+
+\begin{caja}{El truco del punto fijo}
+\begin{enumerate}[leftmargin=*,nosep]
+  \item Folding pliega \texttt{\$t1 = 3 + 4} a \texttt{\$t1 = 7}.
+  \item Propagation reemplaza \texttt{\$t2 = \$t1 * 2} por
+        \texttt{\$t2 = 7 * 2}.
+  \item Folding (siguiente iteracion) pliega a \texttt{\$t2 = 14}.
+  \item Propagation reemplaza \texttt{c = \$t2} por \texttt{c = 14}.
+  \item Dead-code elimina \texttt{\$t1} y \texttt{\$t2} muertos.
+  \item Jump threading limpia etiquetas huerfanas si quedan.
+\end{enumerate}
+Por eso iteramos hasta punto fijo en lugar de una sola pasada.
+\end{caja}
+
+\section{Pruebas y QA: \texttt{qa\_rubrica.py}}
+
+\begin{rubrica}{Cobertura contra la rubrica}
+Suite de \textbf{42 casos automaticos} cubriendo los cinco criterios
+tecnicos. Resultado actual: \textbf{42/42 PASS (100\%)}.
+\end{rubrica}
+
+\textbf{Desglose:}
+
+\begin{lstlisting}[style=tac]
+Criterio 1. Errores semanticos      20/20 casos PASS  (100%)
+Criterio 2. Reporte HTML             2/2 casos PASS  (100%)
+Criterio 3. TAC                     13/13 casos PASS  (100%)
+Criterio 4. Optimizacion             5/5 casos PASS  (100%)
+Criterio 5. Funcionamiento           2/2 casos PASS  (100%)
+                                    -----
+                                    42/42 PASS
+\end{lstlisting}
+
+\textbf{Ejemplos de los casos cubiertos (criterio 1):}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Variable no declarada (uso simple y en asignacion).
+  \item Variable duplicada en mismo ambito.
+  \item Asignaciones int=cadena, int=decimal, bool=int.
+  \item Widening decimal=entero permitido.
+  \item Condicion de si/mientras/para no booleana.
+  \item Division y modulo por cero literal.
+  \item Suma entre booleano y entero.
+  \item Comparacion entre tipos incompatibles.
+  \item Operacion logica entre no booleanos.
+  \item Operadores \texttt{-} y \texttt{!} con tipos invalidos.
+\end{itemize}
+
+\section{Cierre: cosas para senalar al presentar}
+
+\begin{enumerate}[leftmargin=*,nosep]
+  \item Mostrar el arbol de carpetas. Enfatizar que
+        \texttt{intermedio.py} es la frontera.
+  \item Hacer la \textbf{pausa teorica} sobre los tres tipos de IR.
+        Escribir el ejemplo \texttt{(a+b)*2} en pizarra.
+  \item Mostrar TAC original y TAC optimizado lado a lado. Enfatizar
+        \emph{cuantos cuadruplos se redujeron} y \emph{que pasada lo
+        logro}.
+  \item Demostrar la traza del optimizador (iter, pasada, antes,
+        despues, delta).
+  \item Cargar un programa con errores semanticos en la UI y mostrar
+        que \emph{el TAC no se genera} hasta arreglarlos.
+  \item Hacer click en "REPORTES HTML" y abrir el reporte de errores
+        semanticos en el navegador. Resaltar linea y columna.
+  \item Mostrar la corrida de \texttt{python qa\_rubrica.py} con los
+        42/42 PASS.
+  \item Cerrar con la idea de \textbf{punto fijo}: las pasadas se
+        alimentan entre si, por eso iteramos.
+\end{enumerate}
+
+\end{document}

@@ -9,9 +9,10 @@ if hasattr(sys.stdout, "reconfigure"):
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from frontend import Lexer, build_tree, GeneradorTAC
+    from frontend import Lexer, build_tree, GeneradorTAC, check_semantic
     from intermedio import formatear_tac
     from backend import optimizar
+    import reportes as _reportes_mod
 except ImportError as e:
     print(json.dumps({
         "tokens":   [],
@@ -46,6 +47,12 @@ def main():
         sys.exit(1)
 
     ruta = sys.argv[1]
+    # Flag opcional: --reportes <dir>
+    dir_reportes = None
+    if "--reportes" in sys.argv:
+        idx = sys.argv.index("--reportes")
+        if idx + 1 < len(sys.argv):
+            dir_reportes = sys.argv[idx + 1]
 
     try:
         with open(ruta, "r", encoding="utf-8") as f:
@@ -92,11 +99,16 @@ def main():
     traza = []
 
     try:
-        ast = build_tree(tokens_info)
-        quads = GeneradorTAC().generar(ast)
+        ast = build_tree(tokens_info, errores)
+        check_semantic(ast, tabla, errores)
+        # Si hay errores, no generar TAC para no producir instrucciones invalidas
+        quads = []
+        quads_opt = []
+        traza = []
+        if not errores:
+            quads = GeneradorTAC().generar(ast)
+            quads_opt, traza = optimizar(quads)
         tac_filas = formatear_tac(quads)
-
-        quads_opt, traza = optimizar(quads)
         tac_opt_filas = formatear_tac(quads_opt)
 
         cuad_orig = len(quads)
@@ -118,14 +130,34 @@ def main():
     except Exception as e:
         errores = list(errores) + [f"Error generando código intermedio: {e}"]
 
+    # Para la UI web/JSON: errores como strings (retrocompat)
+    from frontend.errores import fmt as _fmt_err
+    errores_str = [_fmt_err(e) if isinstance(e, dict) else str(e) for e in errores]
+
+    rutas_reportes = {}
+    if dir_reportes:
+        try:
+            rutas_reportes = _reportes_mod.generar_reportes_completos(
+                dir_reportes,
+                tokens=tokens_info,
+                tabla=tabla,
+                errores=[e for e in errores if isinstance(e, dict)],
+                tac=tac_filas,
+                tac_opt=tac_opt_filas,
+            )
+        except Exception as e:
+            errores_str.append(f"[Reportes] No se pudo generar: {e}")
+
     resultado = {
         "tokens":               tokens_info,
         "simbolos":             simbolos_json,
-        "errores":              errores,
+        "errores":              errores_str,
+        "errores_estructurados": [e for e in errores if isinstance(e, dict)],
         "tac":                  tac_filas,
         "tac_optimizado":       tac_opt_filas,
         "metricas":             metricas,
         "traza_optimizacion":   traza,
+        "reportes":             rutas_reportes,
     }
 
     print(json.dumps(resultado, ensure_ascii=False))

@@ -1,7 +1,10 @@
 from intermedio import Quad
 
 _BIN_TIPOS = {
-    "MAS": "+", "MENOS": "-", "MULT": "*", "DIV": "/", "MOD": "%",
+    "MAS": "+", "MENOS": "-",
+    "MULT": "*", "MULTIPLICACION": "*",
+    "DIV": "/", "DIVIDIR": "/",
+    "MOD": "%", "MODULO": "%",
     "IGUAL": "==", "DIFERENTE": "!=",
     "MENOR": "<", "MAYOR": ">",
     "MENOR_IGUAL": "<=", "MAYOR_IGUAL": ">=",
@@ -107,6 +110,20 @@ class GeneradorTAC:
             self.emit("=", valor, None, upd_id.get("valor", "?"))
         self.emit("goto", None, None, L_inicio)
         self.emit("label", None, None, L_fin)
+
+    def _g_DoWhile(self, node):
+        L_inicio = self._nueva_etiq()
+        L_fin = self._nueva_etiq()
+        self.emit("label", None, None, L_inicio)
+        self._gen(node.get("body"))
+        cond = self._g_expr(node.get("cond"))
+        self.emit("if_false", cond, None, L_fin)
+        self.emit("goto", None, None, L_inicio)
+        self.emit("label", None, None, L_fin)
+
+    def _g_Read(self, node):
+        id_ = node.get("id") or {}
+        self.emit("read", None, None, id_.get("valor", "?"))
 
     def _g_Print(self, node):
         args = node.get("args")

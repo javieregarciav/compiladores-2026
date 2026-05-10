@@ -1,206 +1,220 @@
+"""
+Lexer PLY (fase 1) adaptado al pipeline de la fase 2.
 
-import re
+Mantiene la API que espera el pipeline: una clase `Lexer` con metodo
+`analizar(codigo) -> (tokens_info, tabla, errores)` donde:
+  - tokens_info: lista de dicts {tipo, valor, linea, columna, longitud}
+  - tabla: TablaSimbolos con los simbolos descubiertos por declaracion
+  - errores: lista de strings con errores lexicos y semanticos basicos
+"""
+
+import ply.lex as lex
 from .tabla_simbolos import TablaSimbolos
+from . import errores as _errores_mod
 
-RESERVED = {
-    "int":     "INT",
-    "float":   "FLOAT",
-    "string":  "STRING",
-    "boolean": "BOOLEAN",
-    "if":      "IF",
-    "else":    "ELSE",
-    "while":   "WHILE",
-    "for":     "FOR",
-    "return":  "RETURN",
-    "true":    "TRUE",
-    "false":   "FALSE",
-    "print":   "PRINT",
-    "input":   "INPUT",
-    "and":     "AND",
-    "or":      "OR",
-    "not":     "NOT",
-    "null":    "NULL",
+# Palabras reservadas en espanol
+reservadas = {
+    'programa': 'PROGRAMA',
+    'entero': 'ENTERO',
+    'decimal': 'DECIMAL',
+    'cadena': 'CADENA_TIPO',
+    'booleano': 'BOOLEANO',
+    'si': 'SI',
+    'sino': 'SINO',
+    'mientras': 'MIENTRAS',
+    'hacer_mientras': 'HACER_MIENTRAS',
+    'para': 'PARA',
+    'funcion': 'FUNCION',
+    'procedimiento': 'PROCEDIMIENTO',
+    'retornar': 'RETORNAR',
+    'verdadero': 'VERDADERO',
+    'falso': 'FALSO',
+    'imprimir': 'IMPRIMIR',
+    'leer': 'LEER',
 }
 
-RESERVED_INV = {v: k for k, v in RESERVED.items()}
+tokens = [
+    'MAS', 'MENOS', 'MULTIPLICACION', 'DIVIDIR', 'MODULO',
+    'IGUAL', 'DIFERENTE',
+    'MENOR', 'MAYOR', 'MENOR_IGUAL', 'MAYOR_IGUAL',
+    'AND', 'OR', 'NOT',
+    'ASIGNAR',
+    'LPAREN', 'RPAREN', 'LLAVE_IZQ', 'LLAVE_DER',
+    'PUNTO_COMA', 'COMA',
+    'NUMERO_ENTERO', 'NUMERO_DECIMAL', 'CADENA_LITERAL',
+    'IDENTIFICADOR',
+] + list(reservadas.values())
 
-TOKENS = (
-    "ENTERO", "DECIMAL", "CADENA", "ID",
-    "MAS", "MENOS", "MULT", "DIV", "MOD",
-    "IGUAL", "DIFERENTE",
-    "MENOR_IGUAL", "MAYOR_IGUAL", "MENOR", "MAYOR",
-    "Y_LOGICO", "O_LOGICO", "NO_LOGICO",
-    "ASIGNACION",
-    "PUNTO_COMA", "COMA",
-    "PAREN_IZQ", "PAREN_DER",
-    "LLAVE_IZQ", "LLAVE_DER",
-) + tuple(RESERVED.values())
+# Tokens simples
+t_MAS = r'\+'
+t_MENOS = r'-'
+t_MULTIPLICACION = r'\*'
+t_DIVIDIR = r'/'
+t_MODULO = r'%'
 
-SPEC = [
-    ("COMENTARIO",  r"//[^\n]*"),
-    ("DECIMAL",     r"\d+\.\d+",   float),
-    ("ENTERO",      r"\d+",        int),
-    ("CADENA",      r'"(?:[^"\\]|\\.)*"'),
-    ("ID",          r"[a-zA-Z_][a-zA-Z_0-9]*"),
+t_IGUAL = r'=='
+t_DIFERENTE = r'!='
+t_MENOR_IGUAL = r'<='
+t_MAYOR_IGUAL = r'>='
+t_MENOR = r'<'
+t_MAYOR = r'>'
 
-    ("IGUAL",       r"=="),
-    ("DIFERENTE",   r"!="),
-    ("MENOR_IGUAL", r"<="),
-    ("MAYOR_IGUAL", r">="),
-    ("Y_LOGICO",    r"&&"),
-    ("O_LOGICO",    r"\|\|"),
+t_AND = r'&&'
+t_OR = r'\|\|'
+t_NOT = r'!'
 
-    ("MAS",         r"\+"),
-    ("MENOS",       r"-"),
-    ("MULT",        r"\*"),
-    ("DIV",         r"/"),
-    ("MOD",         r"%"),
-    ("NO_LOGICO",   r"!"),
-    ("MENOR",       r"<"),
-    ("MAYOR",       r">"),
-    ("ASIGNACION",  r"="),
+t_ASIGNAR = r'='
 
-    ("PUNTO_COMA",  r";"),
-    ("COMA",        r","),
-    ("PAREN_IZQ",   r"\("),
-    ("PAREN_DER",   r"\)"),
-    ("LLAVE_IZQ",   r"\{"),
-    ("LLAVE_DER",   r"\}"),
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
+t_LLAVE_IZQ = r'\{'
+t_LLAVE_DER = r'\}'
+t_PUNTO_COMA = r';'
+t_COMA = r','
 
-    ("NUEVA_LINEA", r"\n"),
-    ("ESPACIO",     r"[ \t\r]+"),
-]
+t_ignore = ' \t'
 
-_PATRON = re.compile(
-    "|".join("(?P<%s>%s)" % (n, p) for n, p, *_ in SPEC)
-)
-_CONV = {n: c for n, _, *c in SPEC if c}
 
-_IGNORAR = frozenset({"NUEVA_LINEA", "ESPACIO", "COMENTARIO"})
+def t_NUMERO_DECIMAL(t):
+    r'\d+\.\d+'
+    try:
+        t.value = float(t.value)
+    except ValueError:
+        t.value = 0.0
+    return t
+
+
+def t_NUMERO_ENTERO(t):
+    r'\d+'
+    try:
+        t.value = int(t.value)
+    except ValueError:
+        t.value = 0
+    return t
+
+
+def t_CADENA_LITERAL(t):
+    r'"([^\\"]|\\.)*"'
+    raw = t.value[1:-1]
+    try:
+        t.value = bytes(raw, 'utf-8').decode('unicode_escape')
+    except Exception:
+        t.value = raw
+    return t
+
+
+def t_IDENTIFICADOR(t):
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
+    t.type = reservadas.get(t.value, 'IDENTIFICADOR')
+    return t
+
+
+def t_COMENTARIO_LINEA(t):
+    r'//.*'
+    pass
+
+
+def t_COMENTARIO_BLOQUE(t):
+    r'/\*[\s\S]*?\*/'
+    t.lexer.lineno += t.value.count('\n')
+    pass
+
+
+def t_newline(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
+
+
+def t_error(t):
+    columna = encontrar_columna(t.lexer.lexdata, t)
+    _errores_mod.agregar_lexico(
+        f"Caracter ilegal '{t.value[0]}'",
+        t.lineno, columna, valor=t.value[0],
+    )
+    t.lexer.skip(1)
+
+
+def encontrar_columna(texto, token):
+    ultima_linea = texto.rfind('\n', 0, token.lexpos)
+    if ultima_linea < 0:
+        ultima_linea = -1
+    return token.lexpos - ultima_linea
+
+
+class _NullLogger:
+    def warning(self, *a, **k): pass
+    def error(self, *a, **k): pass
+    def info(self, *a, **k): pass
+    def debug(self, *a, **k): pass
+    def critical(self, *a, **k): pass
+
+
+_lexer_global = lex.lex(errorlog=_NullLogger())
+
+
+# Tipos de dato (en token) que disparan registro en tabla de simbolos
+_TIPOS_DATO_TOKEN = frozenset({"ENTERO", "DECIMAL", "CADENA_TIPO", "BOOLEANO"})
+# Nombre user-friendly del tipo (para la tabla de simbolos)
+_TIPO_AMIGABLE = {
+    "ENTERO": "entero",
+    "DECIMAL": "decimal",
+    "CADENA_TIPO": "cadena",
+    "BOOLEANO": "booleano",
+}
+
 
 class Lexer:
-
-    _TIPOS_DATO = frozenset({"INT", "FLOAT", "STRING", "BOOLEAN"})
+    """API que espera el pipeline (main.py, bridge.py)."""
 
     def analizar(self, codigo: str):
-        tokens_info = []
-        errores = []
-        tabla = TablaSimbolos()
+        # Limpiar estado global de errores (modulo errores)
+        _errores_mod.limpiar()
+        _lexer_global.lineno = 1
+        _lexer_global.input(codigo)
+        # Guardar codigo para que el parser PLY pueda re-tokenizar
+        from . import parser as _parser_mod
+        _parser_mod._set_codigo(codigo)
 
-        linea_actual = 1
-        inicio_linea = 0
+        tabla = TablaSimbolos()
+        tokens_info = []
+
         ultimo_tipo = None
         proximo_es_id = False
 
-        consumidas = bytearray(len(codigo))
-
-        for m in _PATRON.finditer(codigo):
-            tipo = m.lastgroup
-            valor = m.group()
-            pos = m.start()
-
-            for i in range(m.start(), m.end()):
-                consumidas[i] = 1
-
-            if tipo == "NUEVA_LINEA":
-                linea_actual += 1
-                inicio_linea = m.end()
-                continue
-
-            if tipo in _IGNORAR:
-                continue
-
-            columna = pos - inicio_linea + 1
-
-            if tipo == "ID":
-                tipo = RESERVED.get(valor, "ID")
-
-            if tipo == "CADENA":
-                valor_real = (valor[1:-1]
-                              .replace('\\"', '"')
-                              .replace("\\n", "\n")
-                              .replace("\\t", "\t")
-                              .replace("\\\\", "\\"))
-            elif tipo in _CONV:
-                valor_real = _CONV[tipo][0](valor)
-            else:
-                valor_real = valor
-
+        while True:
+            t = _lexer_global.token()
+            if not t:
+                break
+            columna = encontrar_columna(codigo, t)
+            valor_str = str(t.value)
+            longitud = len(valor_str) if t.type != 'CADENA_LITERAL' else len(valor_str) + 2
             tokens_info.append({
-                "tipo":     tipo,
-                "valor":    str(valor_real),
-                "linea":    linea_actual,
-                "columna":  columna,
-                "longitud": m.end() - m.start(),
+                'tipo': t.type,
+                'valor': valor_str,
+                'linea': t.lineno,
+                'columna': columna,
+                'longitud': longitud,
             })
-
-            if tipo == "CADENA":
-                saltos = valor.count("\n")
-                if saltos:
-                    linea_actual += saltos
-                    inicio_linea = m.start() + valor.rfind("\n") + 1
-
-            if tipo in self._TIPOS_DATO:
-                ultimo_tipo = RESERVED_INV.get(tipo, tipo.lower())
+            # State machine para declaraciones: tipo seguido de identificador
+            if t.type in _TIPOS_DATO_TOKEN:
+                ultimo_tipo = _TIPO_AMIGABLE[t.type]
                 proximo_es_id = True
-            elif tipo == "ID" and proximo_es_id and ultimo_tipo:
-                tabla.insertar(valor, ultimo_tipo, linea_actual)
+            elif t.type == 'IDENTIFICADOR' and proximo_es_id and ultimo_tipo:
+                tabla.insertar(t.value, ultimo_tipo, t.lineno)
                 proximo_es_id = False
                 ultimo_tipo = None
             else:
                 proximo_es_id = False
 
-        linea_err = 1
-        inicio_err = 0
-        for i, ch in enumerate(codigo):
-            if ch == "\n":
-                linea_err += 1
-                inicio_err = i + 1
-                continue
-            if not consumidas[i] and ch not in (" ", "\t", "\r"):
-                col_err = i - inicio_err + 1
-                errores.append(
-                    f"[Línea {linea_err}, Col {col_err}] "
-                    f"Carácter ilegal: '{ch}'"
-                )
-
-        errores.extend(tabla.obtener_errores())
+        # Devolver lista combinada de errores (lexicos + semanticos de tabla)
+        errores = _errores_mod.todos()
         return tokens_info, tabla, errores
 
-if __name__ == "__main__":
-    codigo = """\
-int x = 10;
-float y = 3.14;
-string nombre = "Hola Mundo";
-boolean activo = true;
 
-// Bucle de ejemplo
-while (x != 0) {
-    x = x - 1;
-}
+# Helpers exportados para el parser
+def get_ply_lexer():
+    return _lexer_global
 
-if (x > 5) {
-    print(nombre);
-} else {
-    print("fin");
-}
 
-int z = x + y * 2;
-int z = 99;
-
-int a = 5@;
-"""
-    lexer = Lexer()
-    toks, tabla, errores = lexer.analizar(codigo)
-
-    print("=== TOKENS ===")
-    for t in toks:
-        print(f"  [{t['linea']}:{t['columna']:>3}]  {t['tipo']:<15}  ->  {t['valor']}")
-
-    print("\n=== TABLA DE SIMBOLOS ===")
-    print(tabla)
-
-    if errores:
-        print("\n=== ERRORES ===")
-        for e in errores:
-            print(" ", e)
+def limpiar_errores_lexicos():
+    lista_errores.clear()

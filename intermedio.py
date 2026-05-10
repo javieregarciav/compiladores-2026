@@ -35,7 +35,10 @@ def formatear_tac(quads):
             instr = f"{d} = {a1}"
             etiqueta = ""
         elif op == "print":
-            instr = f"print {a1}"
+            instr = f"imprimir {a1}"
+            etiqueta = ""
+        elif op == "read":
+            instr = f"leer {d}"
             etiqueta = ""
         elif op == "param":
             instr = f"param {a1}"
