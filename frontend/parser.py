@@ -7,7 +7,9 @@ RESERVED = {
 }
 TIPOS_DATO = {"INT", "FLOAT", "STRING", "BOOLEAN"}
 
-def build_tree(tokens):
+def build_tree(tokens, errors=None):
+    if errors is None:
+        errors = []
     toks = [t for t in tokens if t["tipo"] not in ("NUEVA_LINEA", "ESPACIO", "COMENTARIO")]
     pos = [0]
 
@@ -25,6 +27,10 @@ def build_tree(tokens):
         if t and t["tipo"] == tipo:
             pos[0] += 1
             return t
+        if t:
+            errors.append(f"[Línea {t['linea']}, Col {t['columna']}] Se esperaba '{tipo}', pero se encontró '{t['tipo']}'")
+        else:
+            errors.append(f"Fin de archivo inesperado, se esperaba '{tipo}'")
         return None
 
     def parse_program():
@@ -34,7 +40,11 @@ def build_tree(tokens):
             if s:
                 stmts.append(s)
             else:
-                pos[0] += 1
+                # Skip invalid token
+                if pos[0] < len(toks):
+                    t = peek()
+                    errors.append(f"[Línea {t['linea']}, Col {t['columna']}] Token inesperado: '{t['tipo']}'")
+                    pos[0] += 1
         return {"type": "Program", "children": stmts}
 
     def parse_stmt():
@@ -60,12 +70,14 @@ def build_tree(tokens):
         if t["tipo"] == "PUNTO_COMA":
             consume()
             return None
+        # Unknown statement
         tok = consume()
+        errors.append(f"[Línea {tok['linea']}, Col {tok['columna']}] Declaración inválida comenzando con '{tok['tipo']}'")
         return {"type": "Unknown", "token": tok}
 
     def parse_decl():
         dt = consume()
-        id_ = consume() if peek() and peek()["tipo"] == "ID" else None
+        id_ = expect("ID")
         expr = None
         if peek() and peek()["tipo"] == "ASIGNACION":
             consume()
@@ -106,7 +118,7 @@ def build_tree(tokens):
         init = parse_stmt()
         cond = parse_expr()
         expect("PUNTO_COMA")
-        upd_id = consume() if peek() and peek()["tipo"] == "ID" else None
+        upd_id = expect("ID")
         upd_expr = None
         if peek() and peek()["tipo"] == "ASIGNACION":
             consume()
@@ -226,9 +238,13 @@ def build_tree(tokens):
             "IF", "ELSE", "WHILE", "FOR", "RETURN", "PRINT", "INPUT", "AND", "OR", "NOT"
         ):
             return {"type": "Keyword", "token": consume()}
-        return {"type": "Token", "token": consume()}
+        # Unknown token
+        tok = consume()
+        errors.append(f"[Línea {tok['linea']}, Col {tok['columna']}] Token desconocido: '{tok['tipo']}'")
+        return {"type": "Token", "token": tok}
 
-    return parse_program()
+    ast = parse_program()
+    return ast
 
 def get_kids(node):
     if not node:
@@ -334,3 +350,134 @@ def node_label(node):
     if t == "StringLit":
         return '"' + val[:10] + ("..." if len(val) > 10 else "") + '"'
     return val[:14] if val else t
+
+def check_semantic(ast, tabla, errors):
+    RESERVED_INV = {v: k for k, v in RESERVED.items()}
+    def get_type(node):
+        if not node:
+            return None
+        t = node.get("type", "")
+        if t == "Literal":
+            tok = node["token"]
+            if tok["tipo"] == "ENTERO":
+                return "int"
+            elif tok["tipo"] == "DECIMAL":
+                return "float"
+            elif tok["tipo"] == "CADENA":
+                return "string"
+            elif tok["tipo"] in ("TRUE", "FALSE"):
+                return "boolean"
+        elif t == "StringLit":
+            return "string"
+        elif t == "BoolLit":
+            return "boolean"
+        elif t == "Identifier":
+            tok = node["token"]
+            sym = tabla.buscar(tok["valor"])
+            if not sym:
+                errors.append(f"[Línea {tok['linea']}, Col {tok['columna']}] Variable '{tok['valor']}' no declarada")
+                return None
+            return sym.tipo
+        elif t == "BinaryOp":
+            left_type = get_type(node["left"])
+            right_type = get_type(node["right"])
+            op = node["op"]["tipo"]
+            if op in ("DIV", "MOD"):
+                if node["right"].get("type") == "Literal" and node["right"]["token"]["valor"] == "0":
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] División por cero")
+            if op in ("MAS", "MENOS", "MULT", "DIV", "MOD"):
+                if left_type == "int" and right_type == "int":
+                    return "int"
+                elif (left_type in ("int", "float")) and (right_type in ("int", "float")):
+                    return "float"
+                else:
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operación aritmética incompatible entre '{left_type}' y '{right_type}'")
+                    return None
+            elif op in ("IGUAL", "DIFERENTE", "MENOR", "MAYOR", "MENOR_IGUAL", "MAYOR_IGUAL"):
+                if (left_type in ("int", "float")) and (right_type in ("int", "float")):
+                    return "boolean"
+                elif left_type == "string" and right_type == "string" and op in ("IGUAL", "DIFERENTE"):
+                    return "boolean"
+                else:
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Comparación incompatible entre '{left_type}' y '{right_type}'")
+                    return None
+            elif op in ("Y_LOGICO", "O_LOGICO"):
+                if left_type == "boolean" and right_type == "boolean":
+                    return "boolean"
+                else:
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operación lógica incompatible entre '{left_type}' y '{right_type}'")
+                    return None
+        elif t == "UnaryOp":
+            operand_type = get_type(node["operand"])
+            op = node["op"]["tipo"]
+            if op == "MENOS":
+                if operand_type in ("int", "float"):
+                    return operand_type
+                else:
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operador unario '-' incompatible con '{operand_type}'")
+                    return None
+            elif op == "NO_LOGICO":
+                if operand_type == "boolean":
+                    return "boolean"
+                else:
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operador '!' incompatible con '{operand_type}'")
+                    return None
+        elif t == "Group":
+            return get_type(node["expr"])
+        elif t == "Call":
+            id_tok = node["id"]
+            if id_tok["valor"] in ("print", "input"):
+                return None
+            else:
+                errors.append(f"[Línea {id_tok['linea']}, Col {id_tok['columna']}] Función '{id_tok['valor']}' no definida")
+                return None
+        return None
+
+    def check_node(node):
+        if not node:
+            return
+        t = node.get("type", "")
+        if t == "Declaration":
+            dt_tok = node["dataType"]
+            id_tok = node["id"]
+            expr = node["expr"]
+            if expr:
+                expr_type = get_type(expr)
+                var_type = RESERVED_INV.get(dt_tok["tipo"], dt_tok["tipo"].lower())
+                if expr_type and expr_type != var_type:
+                    errors.append(f"[Línea {dt_tok['linea']}, Col {dt_tok['columna']}] Asignación incompatible: '{var_type}' no puede asignar '{expr_type}'")
+        elif t == "Assignment":
+            id_tok = node["id"]
+            expr = node["expr"]
+            sym = tabla.buscar(id_tok["valor"])
+            if sym:
+                expr_type = get_type(expr)
+                if expr_type and expr_type != sym.tipo:
+                    errors.append(f"[Línea {id_tok['linea']}, Col {id_tok['columna']}] Asignación incompatible: '{sym.tipo}' no puede asignar '{expr_type}'")
+        elif t == "Print":
+            arg = node["arg"]
+            get_type(arg)
+        elif t == "If":
+            cond = node["cond"]
+            cond_type = get_type(cond)
+            if cond_type and cond_type != "boolean":
+                errors.append(f"[Línea {node['kw']['linea']}, Col {node['kw']['columna']}] Condición 'if' debe ser booleana, no '{cond_type}'")
+            check_node(node["body"])
+            if node.get("elseBody"):
+                check_node(node["elseBody"])
+        elif t == "While":
+            cond = node["cond"]
+            cond_type = get_type(cond)
+            if cond_type and cond_type != "boolean":
+                errors.append(f"[Línea {node['kw']['linea']}, Col {node['kw']['columna']}] Condición 'while' debe ser booleana, no '{cond_type}'")
+            check_node(node["body"])
+        elif t == "For":
+            check_node(node["body"])
+        elif t == "Block":
+            for s in node.get("stmts", []):
+                check_node(s)
+        elif t == "Program":
+            for c in node.get("children", []):
+                check_node(c)
+
+    check_node(ast)

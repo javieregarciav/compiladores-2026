@@ -9,6 +9,7 @@ from frontend import (
     Lexer,
     build_tree, get_kids, node_label, RESERVED, TIPOS_DATO,
     GeneradorTAC,
+    check_semantic,
 )
 from intermedio import formatear_tac
 from backend import optimizar
@@ -1010,7 +1011,8 @@ class MiniIDE(tk.Tk):
                 tags=("par" if i%2==0 else "impar",))
         self._lbl_sym_count.configure(text=f"{len(simbolos)} simbolos")
 
-        ast = build_tree(tokens); self._arbol.draw(ast)
+        ast = build_tree(tokens, errores); self._arbol.draw(ast)
+        check_semantic(ast, tabla, errores)
         self._lbl_tree_hdr.configure(text="arbol construido")
         self._build_semantic_panel(tokens, simbolos, errores)
 

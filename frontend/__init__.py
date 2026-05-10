@@ -1,6 +1,6 @@
 from .lexer import Lexer
 from .tabla_simbolos import TablaSimbolos, Simbolo
-from .parser import build_tree, get_kids, node_label, TIPOS_DATO, RESERVED
+from .parser import build_tree, get_kids, node_label, TIPOS_DATO, RESERVED, check_semantic
 from .generador_intermedio import GeneradorTAC
 
 __all__ = [
@@ -8,4 +8,5 @@ __all__ = [
     "TablaSimbolos", "Simbolo",
     "build_tree", "get_kids", "node_label", "TIPOS_DATO", "RESERVED",
     "GeneradorTAC",
+    "check_semantic",
 ]
