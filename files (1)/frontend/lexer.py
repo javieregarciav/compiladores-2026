@@ -127,10 +127,11 @@ class Lexer:
                 valor_real = valor
 
             tokens_info.append({
-                "tipo":    tipo,
-                "valor":   str(valor_real),
-                "linea":   linea_actual,
-                "columna": columna,
+                "tipo":     tipo,
+                "valor":    str(valor_real),
+                "linea":    linea_actual,
+                "columna":  columna,
+                "longitud": m.end() - m.start(),
             })
 
             if tipo in self._TIPOS_DATO:

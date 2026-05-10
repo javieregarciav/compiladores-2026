@@ -67,7 +67,8 @@ if (file_put_contents($tmpFile, $codigo) === false) {
 // ── Construir el comando ───────────────────────────────────────────
 // bridge.py recibe la ruta del archivo temporal como argumento
 $bridgePath  = __DIR__ . '/bridge.py';
-$python      = 'python3';          // Cambia a 'python' si usas Windows sin alias
+// En Windows el binario suele ser 'python'; en Linux/Mac es 'python3'
+$python      = (PHP_OS_FAMILY === 'Windows') ? 'python' : 'python3';
 
 // escapeshellarg protege contra inyección de comandos
 $cmd = escapeshellcmd($python) . ' '

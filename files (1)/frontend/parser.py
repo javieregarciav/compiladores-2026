@@ -189,7 +189,7 @@ def build_tree(tokens):
         return l
 
     def parse_unary():
-        if peek() and peek()["tipo"] == "NO_LOGICO":
+        if peek() and peek()["tipo"] in ("NO_LOGICO", "MENOS"):
             op = consume()
             operand = parse_unary()
             return {"type": "UnaryOp", "op": op, "operand": operand}

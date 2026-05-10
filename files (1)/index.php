@@ -1022,7 +1022,7 @@ function buildTree(tokens) {
     return left;
   }
   function parseUnary(){
-    if(peek()&&peek().tipo==='NO_LOGICO'){
+    if(peek()&&(peek().tipo==='NO_LOGICO'||peek().tipo==='MENOS')){
       const op=consume(); const operand=parseUnary();
       return {type:'UnaryOp',op,operand};
     }

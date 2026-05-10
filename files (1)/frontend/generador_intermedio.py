@@ -149,8 +149,11 @@ class GeneradorTAC:
         if t == "UnaryOp":
             operand = self._g_expr(node["operand"])
             tmp = self._nuevo_temp()
-            op = node["op"]["valor"]
-            self.emit(op, operand, None, tmp)
+            op_val = node["op"]["valor"]
+            if op_val == "-":
+                self.emit("-", "0", operand, tmp)
+            else:
+                self.emit(op_val, operand, None, tmp)
             return tmp
         if t == "BinaryOp":
             izq = self._g_expr(node["left"])

@@ -980,8 +980,9 @@ class MiniIDE(tk.Tk):
             if tag.startswith("tok_"): self._editor.tag_remove(tag,"1.0","end")
         codigo = self._editor.get("1.0","end-1c")
         for tok in tokens_info:
-            tipo=tok["tipo"]; linea=tok["linea"]; col=tok["columna"]-1; val=tok["valor"]
-            start=f"{linea}.{col}"; end_=f"{linea}.{col+len(val)}"; tag=f"tok_{tipo}"
+            tipo=tok["tipo"]; linea=tok["linea"]; col=tok["columna"]-1
+            length=tok.get("longitud", len(tok["valor"]))
+            start=f"{linea}.{col}"; end_=f"{linea}.{col+length}"; tag=f"tok_{tipo}"
             if tag in self._editor.tag_names(): self._editor.tag_add(tag,start,end_)
         for m in _re.finditer(r'//[^\n]*', codigo):
             ln=codigo[:m.start()].count("\n")+1; c0=m.start()-codigo[:m.start()].rfind("\n")-1
