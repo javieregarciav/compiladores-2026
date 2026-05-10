@@ -1,6 +1,5 @@
 from intermedio import Quad
 
-
 _BIN_TIPOS = {
     "MAS": "+", "MENOS": "-", "MULT": "*", "DIV": "/", "MOD": "%",
     "IGUAL": "==", "DIFERENTE": "!=",
@@ -8,7 +7,6 @@ _BIN_TIPOS = {
     "MENOR_IGUAL": "<=", "MAYOR_IGUAL": ">=",
     "Y_LOGICO": "&&", "O_LOGICO": "||",
 }
-
 
 class GeneradorTAC:
 

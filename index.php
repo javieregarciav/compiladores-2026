@@ -1,9 +1,5 @@
 <?php
-/**
- * index.php — Mini-Compilador v2.0
- * Analizador Léxico + Árbol Sintáctico + Analizador Semántico
- * Ingeniería en Sistemas · Universidad Mariano Gálvez de Guatemala
- */
+
 $integrantes = [
     'Javier Emanuel García Vásquez',
     'José Luis Curup Aquino',
@@ -19,11 +15,10 @@ $integrantes = [
 <title>MiniCompiler v2.0 · Proyecto Final Compiladores</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-/* ================================================================ RESET */
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;background:#020408;color:#e0f4ff;font-family:'Share Tech Mono','Courier New',monospace;font-size:13px;overflow:hidden}
 
-/* ================================================================ VARIABLES */
 :root{
   --bg0:#020408;--bg1:#040810;--bg2:#060d18;--bg3:#0a1628;--bg4:#0d1e35;
   --cyan:#00f5ff;--green:#00ff88;--amber:#ffb700;--red:#ff2d55;--purple:#bf5af2;--blue:#0a84ff;
@@ -36,7 +31,6 @@ html,body{width:100%;height:100%;background:#020408;color:#e0f4ff;font-family:'S
   --font:'Share Tech Mono',monospace;--disp:'Orbitron',monospace;
 }
 
-/* ================================================================ SCANLINES */
 body::before{content:'';position:fixed;inset:0;z-index:9999;
   background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);
   pointer-events:none;animation:scan 8s linear infinite}
@@ -44,13 +38,10 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;
 body::after{content:'';position:fixed;inset:0;z-index:9998;
   background:radial-gradient(ellipse at 50% 0%,rgba(0,245,255,.04) 0%,transparent 70%);pointer-events:none}
 
-/* ================================================================ CIRCUIT BG */
 .cbg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.04}
 
-/* ================================================================ APP SHELL */
 #app{position:relative;z-index:1;display:grid;grid-template-rows:auto auto 1fr auto;height:100vh;overflow:hidden}
 
-/* ================================================================ BANNER */
 #banner{
   position:relative;z-index:2;
   background:linear-gradient(90deg,rgba(0,10,22,.98),rgba(0,20,40,.98),rgba(0,10,22,.98));
@@ -75,7 +66,6 @@ body::after{content:'';position:fixed;inset:0;z-index:9998;
 .bn-course{font-family:var(--disp);font-size:7.5px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase}
 .bn-teacher{font-size:9px;color:var(--purple);text-shadow:0 0 8px rgba(191,90,242,.3)}
 
-/* ================================================================ HEADER */
 header{display:flex;align-items:center;gap:16px;padding:0 20px;height:48px;
   background:linear-gradient(90deg,var(--bg2),rgba(0,245,255,.03));
   border-bottom:1px solid var(--bd2);position:relative;overflow:hidden}
@@ -104,7 +94,6 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
   box-shadow:var(--gglow);animation:blink 2.5s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ================================================================ MAIN TABS */
 .tab-bar{display:flex;gap:0;border-bottom:1px solid var(--bd2);background:var(--bg2);flex-shrink:0}
 .tab-btn{font-family:var(--disp);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
   padding:0 18px;height:34px;background:none;border:none;border-right:1px solid var(--bd1);
@@ -117,12 +106,10 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
   padding:1px 5px;margin-left:6px;display:none}
 .tab-btn .tab-badge.show{display:inline}
 
-/* ================================================================ MAIN LAYOUT */
 main{display:grid;grid-template-columns:1fr 340px;overflow:hidden}
 .tab-content{display:none;flex:1;overflow:hidden;flex-direction:column}
 .tab-content.active{display:flex}
 
-/* ================================================================ PANEL BASE */
 .panel{border-right:1px solid var(--bd1);border-bottom:1px solid var(--bd1);
   display:flex;flex-direction:column;overflow:hidden;position:relative}
 .ph{display:flex;align-items:center;gap:10px;padding:0 14px;height:34px;
@@ -138,7 +125,6 @@ main{display:grid;grid-template-columns:1fr 340px;overflow:hidden}
 .ph-title.red{color:var(--red)}.ph-title.purple{color:var(--purple)}
 .ph-count{margin-left:auto;font-size:10px;color:var(--t3)}
 
-/* ================================================================ EDITOR */
 #panel-editor{grid-column:1;grid-row:1;display:flex;flex-direction:column}
 .ed-wrap{flex:1;display:flex;overflow:hidden;position:relative}
 #lnum{width:48px;background:var(--bg1);border-right:1px solid var(--bd1);overflow:hidden;flex-shrink:0}
@@ -154,10 +140,8 @@ main{display:grid;grid-template-columns:1fr 340px;overflow:hidden}
   display:flex;align-items:center;padding:0 16px;gap:20px;font-size:10px;color:var(--t3);flex-shrink:0}
 .ed-status b{color:var(--cyan)}
 
-/* ================================================================ SIDE PANEL */
 #side{grid-column:2;grid-row:1/3;border-left:1px solid var(--bd2);display:flex;flex-direction:column;overflow:hidden}
 
-/* ================================================================ TABLES */
 .tscroll{flex:1;overflow-y:auto;overflow-x:hidden}
 .tscroll::-webkit-scrollbar{width:3px}
 .tscroll::-webkit-scrollbar-thumb{background:var(--cyan);border-radius:2px;opacity:.4}
@@ -173,7 +157,6 @@ table.dt tbody tr:hover{background:rgba(0,245,255,.06);cursor:default}
 table.dt tbody td{padding:4px 10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spacing:.8px}
 
-/* token type colors */
 .tok-INT,.tok-FLOAT,.tok-STRING,.tok-BOOLEAN{color:#5ac8fa}
 .tok-IF,.tok-ELSE,.tok-WHILE,.tok-FOR,.tok-RETURN,.tok-AND,.tok-OR,.tok-NOT{color:#bf5af2}
 .tok-TRUE,.tok-FALSE,.tok-NULL{color:#ff9f0a}
@@ -185,7 +168,6 @@ table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spa
 .tok-MAS,.tok-MENOS,.tok-MULT,.tok-DIV,.tok-MOD,.tok-ASIGNACION,
 .tok-Y_LOGICO,.tok-O_LOGICO,.tok-NO_LOGICO{color:#0a84ff}
 
-/* ================================================================ CONSOLE */
 #console{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 16px;
   background:var(--bg1);font-family:var(--font);font-size:12px;line-height:1.7}
 #console::-webkit-scrollbar{width:3px}
@@ -197,7 +179,6 @@ table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spa
 .ct{color:var(--t2)}.ct b{color:var(--red);font-weight:normal}
 .cline.ok .ct{color:var(--green);opacity:.85}
 
-/* ================================================================ SYNTAX TREE — VISUAL */
 #tree-panel{flex:1;overflow:auto;background:var(--bg1);position:relative}
 #tree-panel::-webkit-scrollbar{width:6px;height:6px}
 #tree-panel::-webkit-scrollbar-thumb{background:rgba(191,90,242,.4);border-radius:3px}
@@ -222,7 +203,6 @@ table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spa
 .tlegitem{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--t2);font-family:var(--font)}
 .tlegdot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 
-/* ================================================================ SEMANTIC */
 #sem-panel{flex:1;overflow-y:auto;padding:12px 16px;background:var(--bg1)}
 #sem-panel::-webkit-scrollbar{width:3px}
 #sem-panel::-webkit-scrollbar-thumb{background:var(--amber);border-radius:2px}
@@ -246,7 +226,6 @@ table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spa
 .sem-stat-label{font-family:var(--disp);font-size:7px;letter-spacing:1.5px;
   text-transform:uppercase;color:var(--t3);margin-top:2px;display:block}
 
-/* ================================================================ INTERMEDIATE (TAC) */
 .ir-toolbar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg2);
   border-bottom:1px solid var(--bd1);flex-shrink:0;flex-wrap:wrap}
 .ir-sub{font-family:var(--disp);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
@@ -298,17 +277,14 @@ table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spa
   background:var(--bg2);border:1px solid var(--bd1);border-radius:3px;
   padding:10px 14px;margin:6px 0 10px;white-space:pre;overflow-x:auto}
 
-/* ================================================================ EMPTY STATE */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
   height:100%;gap:8px;color:var(--t4);font-family:var(--disp);font-size:9px;
   letter-spacing:2px;text-transform:uppercase}
 .empty .ei{font-size:28px;opacity:.3}
 
-/* ================================================================ BOTTOM PANEL */
 #panel-bottom{grid-column:1;grid-row:2;display:flex;flex-direction:column;
   border-top:1px solid var(--bd2);overflow:hidden}
 
-/* ================================================================ FOOTER */
 footer{height:46px;background:var(--bg2);border-top:1px solid var(--bd2);
   display:flex;align-items:center;gap:8px;padding:0 16px;flex-shrink:0;
   position:relative;z-index:100;overflow:visible}
@@ -327,13 +303,12 @@ footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
 .btn-clear:hover{color:var(--t1);border-color:var(--bd3)}
 .sep{width:1px;height:20px;background:var(--bd1);margin:0 2px}
 
-/* ================================================================ EXAMPLE PICKER — FIXED */
 .ex-picker{position:relative;z-index:200}
 .btn-ex{color:var(--amber);border-color:rgba(255,183,0,.3);background:rgba(255,183,0,.04)}
 .btn-ex:hover{background:rgba(255,183,0,.1);box-shadow:0 0 12px rgba(255,183,0,.2)}
 .ex-menu{
   display:none;
-  position:fixed;            /* fixed so it escapes any overflow:hidden parent */
+  position:fixed;            
   width:320px;
   background:var(--bg4);
   border:1px solid var(--bd3);
@@ -358,25 +333,20 @@ footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
 .ex-inf b{font-family:var(--font);font-size:11px;font-weight:normal;color:var(--t1)}
 .ex-inf small{font-size:9px;color:var(--t3)}
 
-/* ================================================================ FOOTER INFO */
 .ft-info{margin-left:auto;display:flex;gap:16px;font-size:10px;color:var(--t3)}
 .ft-info span b{color:var(--t2)}
 
-/* ================================================================ PROGRESS */
 #prog{position:fixed;top:0;left:0;height:2px;width:0%;
   background:linear-gradient(90deg,var(--cyan),var(--green));
   box-shadow:0 0 8px var(--cyan);z-index:10000;transition:width .3s ease}
 
-/* ================================================================ HIGHLIGHT COLORS */
 .hk{color:#bf5af2}.ht{color:#5ac8fa}.hn{color:#ff9f0a}.hs{color:#30d158}
 .hc{color:#3a5a6a;font-style:italic}.hb{color:#ff6b6b}.ho{color:#0a84ff}
 
-/* ================================================================ SCROLL */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:var(--bg1)}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
 
-/* ================================================================ ANIMATIONS */
 header{animation:fdown .4s ease .1s both}
 main{animation:fin .4s ease .2s both}
 footer{animation:fup .4s ease .3s both}
@@ -389,7 +359,6 @@ footer{animation:fup .4s ease .3s both}
 
 <div id="prog"></div>
 
-<!-- Circuit bg -->
 <svg class="cbg" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
   <g stroke="#00f5ff" stroke-width=".5" fill="none">
     <line x1="0" y1="80" x2="200" y2="80"/><circle cx="200" cy="80" r="3" fill="#00f5ff"/>
@@ -417,7 +386,6 @@ footer{animation:fup .4s ease .3s both}
 
 <div id="app">
 
-  <!-- BANNER -->
   <div id="banner">
     <div class="bn-left">
       <span class="bn-label">Proyecto Final</span>
@@ -435,7 +403,6 @@ footer{animation:fup .4s ease .3s both}
     </div>
   </div>
 
-  <!-- HEADER -->
   <header>
     <div class="logo">
       <div class="logo-icon"></div>
@@ -456,13 +423,10 @@ footer{animation:fup .4s ease .3s both}
     </div>
   </header>
 
-  <!-- MAIN -->
   <main>
 
-    <!-- LEFT COLUMN -->
     <div style="display:flex;flex-direction:column;overflow:hidden;grid-column:1;grid-row:1/3;">
 
-      <!-- TAB BAR -->
       <div class="tab-bar">
         <button class="tab-btn active" onclick="switchTab('editor')" id="tab-editor">✎ Editor</button>
         <button class="tab-btn" onclick="switchTab('tokens')" id="tab-tokens">◆ Tokens <span class="tab-badge" id="badge-tokens">0</span></button>
@@ -472,7 +436,6 @@ footer{animation:fup .4s ease .3s both}
         <button class="tab-btn" onclick="switchTab('errors')" id="tab-errors">⚠ Errores <span class="tab-badge" id="badge-errors">0</span></button>
       </div>
 
-      <!-- TAB: EDITOR -->
       <div class="tab-content active" id="view-editor" style="flex:1;overflow:hidden;">
         <div class="panel" id="panel-editor" style="flex:1;border-right:none;border-bottom:none;">
           <div class="ph">
@@ -496,7 +459,6 @@ footer{animation:fup .4s ease .3s both}
         </div>
       </div>
 
-      <!-- TAB: TOKENS -->
       <div class="tab-content" id="view-tokens" style="flex:1;overflow:hidden;">
         <div class="panel" style="flex:1;border-right:none;border-bottom:none;">
           <div class="ph">
@@ -513,7 +475,6 @@ footer{animation:fup .4s ease .3s both}
         </div>
       </div>
 
-      <!-- TAB: ÁRBOL SINTÁCTICO -->
       <div class="tab-content" id="view-tree" style="flex:1;overflow:hidden;">
         <div class="panel" style="flex:1;border-right:none;border-bottom:none;display:flex;flex-direction:column;">
           <div class="ph purple">
@@ -544,7 +505,6 @@ footer{animation:fup .4s ease .3s both}
         </div>
       </div>
 
-      <!-- TAB: SEMÁNTICO -->
       <div class="tab-content" id="view-semantic" style="flex:1;overflow:hidden;">
         <div class="panel" style="flex:1;border-right:none;border-bottom:none;">
           <div class="ph amber">
@@ -558,7 +518,6 @@ footer{animation:fup .4s ease .3s both}
         </div>
       </div>
 
-      <!-- TAB: CÓDIGO INTERMEDIO (TAC) -->
       <div class="tab-content" id="view-intermediate" style="flex:1;overflow:hidden;">
         <div class="panel" style="flex:1;border-right:none;border-bottom:none;display:flex;flex-direction:column;">
           <div class="ph">
@@ -566,7 +525,6 @@ footer{animation:fup .4s ease .3s both}
             <span class="ph-count" id="ir-count">—</span>
           </div>
 
-          <!-- Sub-toolbar -->
           <div class="ir-toolbar">
             <button class="ir-sub active" data-sub="orig" onclick="switchIRSub('orig')">Sin optimizar</button>
             <button class="ir-sub" data-sub="opt"  onclick="switchIRSub('opt')">Optimizado</button>
@@ -575,14 +533,12 @@ footer{animation:fup .4s ease .3s both}
             <span class="ir-stats" id="ir-stats"></span>
           </div>
 
-          <!-- Empty state -->
           <div class="ir-empty" id="ir-empty">
             <span style="font-size:32px;opacity:.2">▦</span>
             <span>Sin análisis — presiona F5</span>
             <span style="font-size:9px;color:var(--t3);margin-top:4px">El TAC requiere el backend Python (PHP + bridge.py)</span>
           </div>
 
-          <!-- Sub-vista: ORIGINAL -->
           <div class="ir-view tscroll" id="ir-view-orig" style="display:none">
             <table class="dt" id="ir-table-orig">
               <thead><tr><th style="width:36px">#</th><th style="width:72px">Etiqueta</th><th>Instrucción</th><th style="width:64px">Op</th><th style="width:80px">Arg1</th><th style="width:80px">Arg2</th><th style="width:80px">Dest</th></tr></thead>
@@ -590,7 +546,6 @@ footer{animation:fup .4s ease .3s both}
             </table>
           </div>
 
-          <!-- Sub-vista: OPTIMIZADO -->
           <div class="ir-view tscroll" id="ir-view-opt" style="display:none">
             <table class="dt" id="ir-table-opt">
               <thead><tr><th style="width:36px">#</th><th style="width:72px">Etiqueta</th><th>Instrucción</th><th style="width:64px">Op</th><th style="width:80px">Arg1</th><th style="width:80px">Arg2</th><th style="width:80px">Dest</th></tr></thead>
@@ -598,7 +553,6 @@ footer{animation:fup .4s ease .3s both}
             </table>
           </div>
 
-          <!-- Sub-vista: COMPARACIÓN -->
           <div class="ir-view" id="ir-view-cmp" style="display:none;flex-direction:column;overflow:hidden;flex:1;">
             <div class="ir-cmp-grid">
               <div class="ir-cmp-col">
@@ -625,7 +579,6 @@ footer{animation:fup .4s ease .3s both}
             </div>
           </div>
 
-          <!-- Sub-vista: INFO -->
           <div class="ir-view tscroll" id="ir-view-info" style="display:none">
             <div class="ir-info">
 <h3>CÓDIGO INTERMEDIO  =  FRONTERA FRONT-END / BACK-END</h3>
@@ -698,7 +651,6 @@ como identificador, así nunca chocan con variables del usuario llamadas
         </div>
       </div>
 
-      <!-- TAB: ERRORS -->
       <div class="tab-content" id="view-errors" style="flex:1;overflow:hidden;">
         <div class="panel" style="flex:1;border-right:none;border-bottom:none;">
           <div class="ph red">
@@ -709,9 +661,8 @@ como identificador, así nunca chocan con variables del usuario llamadas
         </div>
       </div>
 
-    </div><!-- /left column -->
+    </div>
 
-    <!-- RIGHT SIDE: Symbols -->
     <div id="side">
       <div class="ph green" style="flex-shrink:0">
         <span class="ph-title green">◆ Tabla de Símbolos</span>
@@ -725,7 +676,6 @@ como identificador, así nunca chocan con variables del usuario llamadas
         </table>
       </div>
 
-      <!-- Mini stats in side panel -->
       <div style="border-top:1px solid var(--bd2);padding:10px 14px;flex-shrink:0;background:var(--bg2)">
         <div style="font-family:var(--disp);font-size:7px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Resumen</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -751,7 +701,6 @@ como identificador, así nunca chocan con variables del usuario llamadas
 
   </main>
 
-  <!-- FOOTER -->
   <footer>
     <button class="btn btn-run" id="btn-run" onclick="runAnalysis()">
       <span>▶</span> Analizar <span style="opacity:.5;font-size:7px">[F5]</span>
@@ -759,7 +708,6 @@ como identificador, así nunca chocan con variables del usuario llamadas
     <div class="sep"></div>
     <button class="btn btn-clear" onclick="clearAll()"><span>⌫</span> Limpiar</button>
 
-    <!-- EXAMPLE PICKER — uses position:fixed for the menu -->
     <div class="ex-picker" id="ex-picker">
       <button class="btn btn-ex" id="btn-ex" onclick="toggleExMenu(event)">
         <span>📄</span> Ejemplos <span id="ex-arrow" style="font-size:9px;margin-left:2px;transition:transform .2s;display:inline-block">▾</span>
@@ -783,12 +731,10 @@ como identificador, así nunca chocan con variables del usuario llamadas
     </div>
   </footer>
 
-</div><!-- /#app -->
+</div>
 
 <script>
-/* ================================================================
-   LEXER ENGINE
-================================================================ */
+
 const RESERVED = {int:'INT',float:'FLOAT',string:'STRING',boolean:'BOOLEAN',
   if:'IF',else:'ELSE',while:'WHILE',for:'FOR',return:'RETURN',
   true:'TRUE',false:'FALSE',print:'PRINT',input:'INPUT',
@@ -857,11 +803,8 @@ function runLexer(code) {
   return {tokens, simbolos:Object.values(simbolos), errores};
 }
 
-/* ================================================================
-   SYNTAX TREE BUILDER
-================================================================ */
 function buildTree(tokens) {
-  // Recursive descent parser — builds a display tree
+  
   let pos = 0;
   const toks = tokens.filter(t =>
     !['NUEVA_LINEA','ESPACIO','COMENTARIO'].includes(t.tipo));
@@ -890,7 +833,7 @@ function buildTree(tokens) {
     }
     if(t.tipo==='LLAVE_IZQ') return parseBlock();
     if(t.tipo==='PUNTO_COMA'){consume();return null;}
-    // unknown token — skip
+    
     const tok=consume();
     return {type:'Unknown', token:tok};
   }
@@ -937,7 +880,7 @@ function buildTree(tokens) {
     expect('PAREN_IZQ');
     const init=parseStatement();
     const cond=parseExpr(); expect('PUNTO_COMA');
-    // update: id = expr
+    
     const updId=peek()&&peek().tipo==='ID'?consume():null;
     let updExpr=null;
     if(peek()&&peek().tipo==='ASIGNACION'){consume();updExpr=parseExpr();}
@@ -965,7 +908,7 @@ function buildTree(tokens) {
       expect('LLAVE_DER');
       return {type:'Block',stmts};
     }
-    // single statement block
+    
     const s=parseStatement();
     return {type:'Block',stmts:s?[s]:[]};
   }
@@ -1061,11 +1004,6 @@ function buildTree(tokens) {
   return parseProgram();
 }
 
-/* ================================================================
-   TREE RENDERER — VISUAL SVG CANVAS
-================================================================ */
-
-// ── Node palette ──────────────────────────────────────────────────
 const NODE_STYLE = {
   Program:     {fill:'#3b1a7a',stroke:'#7b2ff7',icon:'⬡'},
   Block:       {fill:'#2a1060',stroke:'#6b1fe6',icon:'{ }'},
@@ -1089,17 +1027,14 @@ const NODE_STYLE = {
 };
 const DEFAULT_STYLE = {fill:'#1a1a2a',stroke:'#3a3a6a',icon:'·'};
 
-// ── Layout constants ───────────────────────────────────────────────
-const NW = 130;  // node width
-const NH = 40;   // node height
-const HGAP = 24; // horizontal gap between siblings
-const VGAP = 56; // vertical gap between levels
+const NW = 130;  
+const NH = 40;   
+const HGAP = 24; 
+const VGAP = 56; 
 
-// ── Global tree state ─────────────────────────────────────────────
-let _treeData = null;      // {node, layout} root
-let _collapsed = new Set(); // set of node ids that are collapsed
+let _treeData = null;      
+let _collapsed = new Set(); 
 
-// ── Assign unique IDs to all nodes ────────────────────────────────
 let _nodeCounter = 0;
 function assignIds(node) {
   if (!node) return;
@@ -1155,7 +1090,6 @@ function getKids(node) {
   }
 }
 
-// ── Node label ────────────────────────────────────────────────────
 function nodeLabel(node) {
   switch(node.type) {
     case 'Program':    return 'PROGRAMA';
@@ -1185,11 +1119,10 @@ function nodeSubLabel(node) {
   return '';
 }
 
-// ── Recursive Reingold-Tilford layout ─────────────────────────────
 function layoutTree(node, depth=0) {
   const collapsed = _collapsed.has(node._id);
   const kids = collapsed ? [] : getKids(node);
-  kids.forEach(assignIds); // ensure IDs on dynamic sub-nodes
+  kids.forEach(assignIds); 
 
   if (kids.length === 0) {
     return { node, x: 0, y: depth*(NH+VGAP), w: NW, children: [], depth, collapsed };
@@ -1197,7 +1130,6 @@ function layoutTree(node, depth=0) {
 
   const childLayouts = kids.map(k => layoutTree(k, depth+1));
 
-  // Space children evenly
   let cx = 0;
   childLayouts.forEach((cl, i) => {
     const subtreeW = getSubtreeWidth(cl);
@@ -1206,7 +1138,6 @@ function layoutTree(node, depth=0) {
   });
   cx -= HGAP;
 
-  // Center parent over children
   const firstX = childLayouts[0].x;
   const lastCL = childLayouts[childLayouts.length-1];
   const lastX = lastCL.x;
@@ -1237,7 +1168,6 @@ function shiftTree(layout, dx) {
   layout.children.forEach(c => shiftTree(c, dx));
 }
 
-// ── SVG rendering ─────────────────────────────────────────────────
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function svgEl(tag, attrs={}) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -1249,7 +1179,6 @@ function renderTreeSVG(rootLayout) {
   const svg = document.getElementById('tree-svg');
   svg.innerHTML = '';
 
-  // Compute canvas size
   const allNodes = [];
   collectLayouts(rootLayout, allNodes);
   if (allNodes.length === 0) return;
@@ -1266,11 +1195,9 @@ function renderTreeSVG(rootLayout) {
   svg.setAttribute('height', H + 20);
   svg.setAttribute('viewBox', `${minX-padX} -${padY} ${W} ${H+padY}`);
 
-  // Draw edges first (behind nodes)
   const edgeGroup = svgEl('g', {id:'tree-edges'});
   svg.appendChild(edgeGroup);
 
-  // Draw nodes
   const nodeGroup = svgEl('g', {id:'tree-nodes'});
   svg.appendChild(nodeGroup);
 
@@ -1288,11 +1215,10 @@ function drawLayout(layout, edgeG, nodeG) {
   const cx = x + NW/2;
   const cy = y + NH/2;
 
-  // Draw edges to children
   children.forEach(child => {
     const childCx = child.x + NW/2;
     const childCy = child.y + NH/2;
-    // Cubic bezier for smooth curves
+    
     const mx = cx;
     const my = y + NH + VGAP/2;
     const path = svgEl('path', {
@@ -1303,28 +1229,24 @@ function drawLayout(layout, edgeG, nodeG) {
     edgeG.appendChild(path);
   });
 
-  // Node group
   const g = svgEl('g', {
     class: 'tnode',
     transform: `translate(${x}, ${y})`,
   });
   g.addEventListener('click', () => toggleNodeCollapse(node._id));
 
-  // Shadow/glow rect
   const glow = svgEl('rect', {
     x:1, y:1, width:NW-2, height:NH-2, rx:8,
     fill: st.stroke, opacity:'0.15'
   });
   g.appendChild(glow);
 
-  // Main box
   const rect = svgEl('rect', {
     class:'tnbox', x:0, y:0, width:NW, height:NH, rx:7,
     fill: st.fill, stroke: st.stroke, 'stroke-width':'1.5',
   });
   g.appendChild(rect);
 
-  // Collapse indicator (dot at bottom-center if has children)
   const allKids = getKids(node);
   if (allKids.length > 0) {
     const indicator = svgEl('circle', {
@@ -1335,7 +1257,6 @@ function drawLayout(layout, edgeG, nodeG) {
     g.appendChild(indicator);
   }
 
-  // Icon (left side)
   const icon = svgEl('text', {
     x: 14, y: NH/2,
     'dominant-baseline':'central', 'text-anchor':'middle',
@@ -1345,7 +1266,6 @@ function drawLayout(layout, edgeG, nodeG) {
   icon.textContent = st.icon;
   g.appendChild(icon);
 
-  // Label text
   const lbl = nodeLabel(node);
   const labelEl = svgEl('text', {
     class:'tnlabel', x: NW/2 + 4, y: NH/2 - (nodeSubLabel(node)?4:0),
@@ -1354,7 +1274,6 @@ function drawLayout(layout, edgeG, nodeG) {
   labelEl.textContent = truncate(lbl, 13);
   g.appendChild(labelEl);
 
-  // Sub-label
   const sub = nodeSubLabel(node);
   if (sub) {
     const subEl = svgEl('text', {
@@ -1367,7 +1286,6 @@ function drawLayout(layout, edgeG, nodeG) {
 
   nodeG.appendChild(g);
 
-  // Recurse
   children.forEach(child => drawLayout(child, edgeG, nodeG));
 }
 
@@ -1375,7 +1293,6 @@ function truncate(s, max) {
   return s.length > max ? s.slice(0, max-1)+'…' : s;
 }
 
-// ── Collapse / expand ─────────────────────────────────────────────
 function toggleNodeCollapse(id) {
   if (_collapsed.has(id)) _collapsed.delete(id);
   else _collapsed.add(id);
@@ -1396,7 +1313,7 @@ function treeExpandAll() {
 }
 
 function treeCollapseAll() {
-  // Collapse everything except root
+  
   const ids = [];
   function collect(node) {
     if (!node) return;
@@ -1414,7 +1331,6 @@ function treeZoomReset() {
   panel.scrollLeft = 0;
 }
 
-// ── Main entry: draw from AST ─────────────────────────────────────
 function drawVisualTree(astRoot) {
   _treeData = astRoot;
   _collapsed = new Set();
@@ -1431,36 +1347,28 @@ function drawVisualTree(astRoot) {
   return allNodes.length;
 }
 
-/* ================================================================
-   SEMANTIC ANALYZER
-================================================================ */
 function runSemantic(tokens, simbolos, errores) {
   const issues = [];
   const symMap = {};
   simbolos.forEach(s => symMap[s.nombre] = s);
 
-  // 1. Variables usadas sin declarar
   const declaredNames = new Set(simbolos.map(s=>s.nombre));
   tokens.forEach(tok => {
     if(tok.tipo==='ID' && !declaredNames.has(tok.valor) &&
        !['print','input'].includes(tok.valor)){
-      // Check if it's a reference (not declaration context)
-      // We'll flag it as warning only
+
     }
   });
 
-  // 2. Collect all IDs used vs declared
   const usedIds = new Set();
   tokens.forEach(t => { if(t.tipo==='ID') usedIds.add(t.valor); });
   const unusedVars = simbolos.filter(s => {
     const count = tokens.filter(t=>t.tipo==='ID'&&t.valor===s.nombre).length;
-    return count <= 1; // declared but never used again
+    return count <= 1; 
   });
 
-  // 3. Type analysis for assignments
   const ARITH_OPS = new Set(['MAS','MENOS','MULT','DIV','MOD']);
 
-  // 4. Count structures
   const ifs    = tokens.filter(t=>t.tipo==='IF').length;
   const whiles = tokens.filter(t=>t.tipo==='WHILE').length;
   const fors   = tokens.filter(t=>t.tipo==='FOR').length;
@@ -1483,7 +1391,6 @@ function renderSemantic(semResult, errores) {
   const {stats, unusedVars} = semResult;
   let html = '';
 
-  // Stats grid
   html += `<div class="sem-stats">
     <div class="sem-stat-box"><span class="sem-stat-num cyan">${stats.totalTokens}</span><span class="sem-stat-label">Total Tokens</span></div>
     <div class="sem-stat-box"><span class="sem-stat-num green">${stats.totalSymbols}</span><span class="sem-stat-label">Símbolos</span></div>
@@ -1491,7 +1398,6 @@ function renderSemantic(semResult, errores) {
     <div class="sem-stat-box"><span class="sem-stat-num" style="color:var(--purple);text-shadow:0 0 8px var(--purple)">${stats.assigns}</span><span class="sem-stat-label">Asignaciones</span></div>
   </div>`;
 
-  // Estructuras de control
   html += `<div class="sem-section">
     <div class="sem-section-title">Estructuras de Control</div>`;
   const structs = [
@@ -1509,7 +1415,6 @@ function renderSemantic(semResult, errores) {
   });
   html += '</div>';
 
-  // Errores semánticos
   const semErrs = errores.filter(e=>e.includes('semántico'));
   const lexErrs = errores.filter(e=>e.includes('ilegal'));
   html += `<div class="sem-section">
@@ -1531,7 +1436,6 @@ function renderSemantic(semResult, errores) {
   }
   html+='</div>';
 
-  // Variables declaradas con tipos
   html += `<div class="sem-section">
     <div class="sem-section-title">Variables Declaradas</div>`;
   if(unusedVars.length>0){
@@ -1543,9 +1447,6 @@ function renderSemantic(semResult, errores) {
   return html;
 }
 
-/* ================================================================
-   SYNTAX HIGHLIGHTING
-================================================================ */
 const HL = [
   [/\/\/[^\n]*/g,                     'hc'],
   [/"(?:[^"\\]|\\.)*"/g,              'hs'],

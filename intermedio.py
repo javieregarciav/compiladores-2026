@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-
 @dataclass
 class Quad:
     op: str
@@ -14,7 +13,6 @@ class Quad:
                 self.arg1 if self.arg1 is not None else "_",
                 self.arg2 if self.arg2 is not None else "_",
                 self.dest if self.dest is not None else "_")
-
 
 def formatear_tac(quads):
     filas = []

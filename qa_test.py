@@ -1,30 +1,24 @@
-"""QA script — runs bridge.py against all 7 sample programs from main.py
-and validates the JSON output."""
 import sys, os, json, subprocess, tempfile, importlib.util
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PROJ = os.path.join(ROOT, "files (1)")
+PROJ = ROOT
 BRIDGE = os.path.join(PROJ, "bridge.py")
 
-# Load EJEMPLOS list from main.py without executing tk init
 sys.path.insert(0, PROJ)
 
 def load_examples():
-    """Read main.py and execute only up through the EJEMPLOS list."""
     main_path = os.path.join(PROJ, "main.py")
     with open(main_path, "r", encoding="utf-8") as f:
         src = f.read()
-    # Find the EJEMPLOS = [ ... ] block and execute just the list literal
     start = src.find("EJEMPLOS = [")
     end = src.find("\n]\n", start) + 2
     snippet = src[start:end]
     ns = {}
     exec(snippet, ns)
     return ns["EJEMPLOS"]
-
 
 def run_bridge(code: str) -> dict:
     with tempfile.NamedTemporaryFile("w", suffix=".ml", delete=False, encoding="utf-8") as f:
@@ -45,7 +39,6 @@ def run_bridge(code: str) -> dict:
         print(f"  Invalid JSON: {e}")
         print(f"  stdout: {r.stdout[:500]}")
         return None
-
 
 def validate_response(data: dict, label: str) -> list:
     issues = []
@@ -69,7 +62,6 @@ def validate_response(data: dict, label: str) -> list:
                 issues.append(f"[{label}] metricas missing key: {k}")
 
     return issues
-
 
 def main():
     print("=" * 72)
@@ -108,7 +100,6 @@ def main():
         sys.exit(1)
     else:
         print("PASSED: all 7 examples produced valid JSON with all required keys")
-
 
 if __name__ == "__main__":
     main()

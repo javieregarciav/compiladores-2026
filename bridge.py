@@ -24,7 +24,6 @@ except ImportError as e:
     }, ensure_ascii=False))
     sys.exit(0)
 
-
 def _contar_temps(quads):
     temps = set()
     for q in quads:
@@ -32,7 +31,6 @@ def _contar_temps(quads):
             if isinstance(x, str) and x.startswith("$t") and x[2:].isdigit():
                 temps.add(x)
     return len(temps)
-
 
 def main():
     if len(sys.argv) < 2:
@@ -64,7 +62,6 @@ def main():
         }, ensure_ascii=False))
         sys.exit(1)
 
-    # ── FRONT-END: análisis léxico + tabla de símbolos ──
     try:
         lexer = Lexer()
         tokens_info, tabla, errores = lexer.analizar(codigo)
@@ -89,7 +86,6 @@ def main():
             "valor":  str(sim.valor) if sim.valor is not None else "—",
         })
 
-    # ── FRONT-END: parser → AST → generador de código intermedio (TAC) ──
     tac_filas = []
     tac_opt_filas = []
     metricas = {}
@@ -100,7 +96,6 @@ def main():
         quads = GeneradorTAC().generar(ast)
         tac_filas = formatear_tac(quads)
 
-        # ── BACK-END: optimizador sobre el TAC ──
         quads_opt, traza = optimizar(quads)
         tac_opt_filas = formatear_tac(quads_opt)
 
@@ -121,8 +116,6 @@ def main():
             "temps_opt":      temps_opt,
         }
     except Exception as e:
-        # No abortamos el análisis: mostramos lo que sí se pudo construir
-        # y registramos el error para que se vea en la consola del frontend.
         errores = list(errores) + [f"Error generando código intermedio: {e}"]
 
     resultado = {
@@ -137,7 +130,6 @@ def main():
 
     print(json.dumps(resultado, ensure_ascii=False))
     sys.exit(0)
-
 
 if __name__ == "__main__":
     main()

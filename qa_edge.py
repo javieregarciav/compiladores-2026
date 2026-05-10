@@ -1,16 +1,13 @@
-"""QA edge cases — vacío, comentarios, errores severos, sin args."""
 import sys, os, json, subprocess, tempfile
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PROJ = os.path.join(ROOT, "files (1)")
+PROJ = ROOT
 BRIDGE = os.path.join(PROJ, "bridge.py")
 
-
 def run_bridge(code: str = None, no_args: bool = False) -> tuple:
-    """Returns (returncode, parsed_json_or_none, raw_stdout)."""
     args = [sys.executable, BRIDGE]
     tmp = None
     if not no_args:
@@ -28,7 +25,6 @@ def run_bridge(code: str = None, no_args: bool = False) -> tuple:
     except json.JSONDecodeError:
         data = None
     return r.returncode, data, r.stdout, r.stderr
-
 
 CASES = [
     ("Sin argumentos", None, True),

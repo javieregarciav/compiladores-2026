@@ -1,0 +1,836 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[spanish,es-tabla,es-noshorthands]{babel}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{hyperref}
+
+\definecolor{azulOscuro}{HTML}{1E3C78}
+\definecolor{azulMedio}{HTML}{2A5BB1}
+\definecolor{grisCodigo}{HTML}{F5F6FA}
+\definecolor{grisBorde}{HTML}{D0D4DD}
+\definecolor{kw}{HTML}{0033B3}
+\definecolor{str}{HTML}{067D17}
+\definecolor{com}{HTML}{8C8C8C}
+\definecolor{tipo}{HTML}{8B4513}
+\definecolor{verdeTAC}{HTML}{2D7D46}
+\definecolor{rojoOpt}{HTML}{B23B3B}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=azulMedio,
+  urlcolor=azulMedio,
+  pdftitle={Compiladores 2026 - Fase 2}
+}
+
+\titleformat{\section}
+  {\color{azulOscuro}\Large\bfseries}
+  {\thesection.}{0.6em}{}
+\titleformat{\subsection}
+  {\color{azulMedio}\large\bfseries}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\color{azulMedio}\normalsize\bfseries}
+  {\thesubsubsection.}{0.5em}{}
+
+\lstdefinestyle{py}{
+  language=Python,
+  backgroundcolor=\color{grisCodigo},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{kw}\bfseries,
+  stringstyle=\color{str},
+  commentstyle=\color{com}\itshape,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{grisBorde},
+  numbers=none,
+  showstringspaces=false,
+  breaklines=true,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  aboveskip=6pt,
+  belowskip=6pt,
+}
+\lstdefinestyle{js}{
+  language=Java,
+  backgroundcolor=\color{grisCodigo},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{kw}\bfseries,
+  stringstyle=\color{str},
+  commentstyle=\color{com}\itshape,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{grisBorde},
+  numbers=none,
+  showstringspaces=false,
+  breaklines=true,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  aboveskip=6pt,
+  belowskip=6pt,
+}
+\lstdefinestyle{tac}{
+  backgroundcolor=\color{grisCodigo},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{grisBorde},
+  numbers=none,
+  showstringspaces=false,
+  breaklines=true,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  aboveskip=6pt,
+  belowskip=6pt,
+}
+
+\newtcolorbox{caja}[1]{
+  colback=grisCodigo,
+  colframe=azulMedio,
+  title=\textbf{#1},
+  fonttitle=\color{white},
+  boxrule=0.5pt,
+  arc=2pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt, after skip=8pt,
+}
+
+\title{\vspace{-1.2cm}\color{azulOscuro}\textbf{Compiladores 2026 --- Fase 2}\\[0.3em]
+\large\color{black}Frontend/Backend, Código Intermedio, Optimización y Visualización}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.4cm}
+
+\section{Resumen}
+
+En esta fase se reorganizó el compilador en \textbf{frontend} (análisis) y
+\textbf{backend} (transformación), se incorporó la generación de
+\textbf{código intermedio} en formato \textit{Three-Address Code} (TAC) y
+se construyó un \textbf{optimizador} que trabaja sobre ese TAC. Además se
+extendió la interfaz web para mostrar el TAC original, el optimizado y la
+traza del optimizador.
+
+A continuación se presenta el código real del proyecto, archivo por archivo,
+explicando qué hace cada bloque.
+
+\section{Separación Frontend / Backend}
+
+\subsection{Estructura física}
+
+\begin{lstlisting}[style=tac]
+files (1)/
+|-- bridge.py                       # orquestador (CLI)
+|-- intermedio.py                   # contrato compartido (Quad + formatter)
+|-- frontend/
+|   |-- __init__.py
+|   |-- lexer.py
+|   |-- tabla_simbolos.py
+|   |-- parser.py
+|   `-- generador_intermedio.py
+`-- backend/
+    |-- __init__.py
+    `-- optimizador.py
+\end{lstlisting}
+
+\subsection{\texttt{frontend/\_\_init\_\_.py} --- qué exporta el frontend}
+
+\begin{lstlisting}[style=py]
+from .lexer              import Lexer
+from .tabla_simbolos     import TablaSimbolos, Simbolo
+from .parser             import build_tree, get_kids, node_label, TIPOS_DATO, RESERVED
+from .generador_intermedio import GeneradorTAC
+
+__all__ = [
+    "Lexer",
+    "TablaSimbolos", "Simbolo",
+    "build_tree", "get_kids", "node_label", "TIPOS_DATO", "RESERVED",
+    "GeneradorTAC",
+]
+\end{lstlisting}
+
+\textbf{Qué hace:} agrupa todos los componentes del análisis en un solo paquete
+y los re-exporta. El \texttt{bridge.py} hace
+\texttt{from frontend import Lexer, build\_tree, GeneradorTAC} y no se entera
+de cómo está organizado por dentro.
+
+\subsection{\texttt{backend/\_\_init\_\_.py} --- qué exporta el backend}
+
+\begin{lstlisting}[style=py]
+from .optimizador import optimizar
+
+__all__ = ["optimizar"]
+\end{lstlisting}
+
+\textbf{Qué hace:} expone únicamente la función \texttt{optimizar(quads)}.
+El backend hoy sólo optimiza, pero la interfaz pública queda lista para
+agregar generadores de código objeto en fases siguientes sin tocar el resto.
+
+\section{Frontera compartida: \texttt{intermedio.py}}
+
+Este archivo es el \textbf{único} módulo que ambos lados conocen. Define la
+estructura de un cuádruplo y un \textit{pretty-printer} para mostrarlo.
+
+\subsection{La dataclass \texttt{Quad}}
+
+\begin{lstlisting}[style=py]
+@dataclass
+class Quad:
+    op:   str
+    arg1: Optional[str] = None
+    arg2: Optional[str] = None
+    dest: Optional[str] = None
+
+    def as_tuple(self):
+        return (self.op,
+                self.arg1 if self.arg1 is not None else "_",
+                self.arg2 if self.arg2 is not None else "_",
+                self.dest if self.dest is not None else "_")
+\end{lstlisting}
+
+\textbf{Qué hace:}
+\begin{itemize}[leftmargin=*,nosep]
+  \item \texttt{op}: el operador (\texttt{+}, \texttt{=}, \texttt{goto}, \texttt{label}, \dots).
+  \item \texttt{arg1}, \texttt{arg2}: los dos operandos fuente (cualquiera puede faltar).
+  \item \texttt{dest}: el destino. Para asignaciones y operaciones es el
+        nombre/temporal donde queda el resultado; para saltos es la etiqueta
+        a la que se salta.
+  \item \texttt{as\_tuple()}: devuelve la 4-tupla con \texttt{"\_"} cuando hay
+        \texttt{None}, útil para imprimir o serializar.
+\end{itemize}
+
+\subsection{\texttt{formatear\_tac} --- pretty-printer para la UI}
+
+\begin{lstlisting}[style=py]
+def formatear_tac(quads):
+    filas = []
+    n = 0
+    for q in quads:
+        op, a1, a2, d = q.op, q.arg1, q.arg2, q.dest
+        if op == "label":
+            instr = f"{d}:"
+            etiqueta = d
+        elif op == "goto":
+            instr = f"goto {d}"
+        elif op == "if_false":
+            instr = f"ifFalse {a1} goto {d}"
+        elif op == "=":
+            instr = f"{d} = {a1}"
+        elif op == "print":
+            instr = f"print {a1}"
+        elif op == "param":
+            instr = f"param {a1}"
+        elif op == "call":
+            instr = f"{d} = call {a1}, {a2}"
+        elif op == "!":
+            instr = f"{d} = !{a1}"
+        else:
+            instr = f"{d} = {a1} {op} {a2}"   # binarias
+        n += 1
+        filas.append({"n": n, "etiqueta": etiqueta, "instruccion": instr,
+                      "op": op, "arg1": a1 or "-", "arg2": a2 or "-",
+                      "dest": d  or "-"})
+    return filas
+\end{lstlisting}
+
+\textbf{Qué hace:} recorre la lista de cuádruplos y produce una lista de
+diccionarios listos para que el JS de la UI los pinte como tabla o como
+texto plano. Cada \texttt{op} tiene su propio formato legible
+(\texttt{ifFalse \$t2 goto \$L1}, \texttt{c = \$t1}, \dots) sin perder
+los campos crudos (\texttt{op}, \texttt{arg1}, \texttt{arg2}, \texttt{dest}).
+
+\section{Generación del TAC: \texttt{frontend/generador\_intermedio.py}}
+
+\subsection{Mapa de operadores}
+
+\begin{lstlisting}[style=py]
+_BIN_TIPOS = {
+    "MAS": "+", "MENOS": "-", "MULT": "*", "DIV": "/", "MOD": "%",
+    "IGUAL": "==", "DIFERENTE": "!=",
+    "MENOR": "<", "MAYOR": ">",
+    "MENOR_IGUAL": "<=", "MAYOR_IGUAL": ">=",
+    "Y_LOGICO": "&&", "O_LOGICO": "||",
+}
+\end{lstlisting}
+
+\textbf{Qué hace:} traduce el \texttt{tipo} del token (como lo emite el lexer)
+al símbolo que va a quedar dentro del cuádruplo. Por ejemplo, el token
+\texttt{MAS} se vuelve \texttt{"+"} en el TAC.
+
+\subsection{Estado del generador y helpers}
+
+\begin{lstlisting}[style=py]
+class GeneradorTAC:
+    def __init__(self):
+        self.codigo: list[Quad] = []
+        self._t = 0
+        self._l = 0
+
+    def _nuevo_temp(self) -> str:
+        self._t += 1
+        return f"$t{self._t}"
+
+    def _nueva_etiq(self) -> str:
+        self._l += 1
+        return f"$L{self._l}"
+
+    def emit(self, op, arg1=None, arg2=None, dest=None):
+        self.codigo.append(Quad(op, arg1, arg2, dest))
+\end{lstlisting}
+
+\textbf{Qué hace:}
+\begin{itemize}[leftmargin=*,nosep]
+  \item \texttt{self.codigo}: lista de cuádruplos que se va construyendo.
+  \item \texttt{\_nuevo\_temp()}: devuelve nombres frescos
+        \texttt{\$t1, \$t2, \dots}\ para guardar resultados intermedios.
+  \item \texttt{\_nueva\_etiq()}: devuelve nombres frescos
+        \texttt{\$L1, \$L2, \dots}\ para destinos de salto.
+  \item \texttt{emit()}: empuja un cuádruplo al final de la lista.
+\end{itemize}
+
+\subsection{Punto de entrada y \textit{dispatcher}}
+
+\begin{lstlisting}[style=py]
+def generar(self, ast) -> list[Quad]:
+    self.codigo = []
+    self._t = 0
+    self._l = 0
+    if ast:
+        self._gen(ast)
+    return self.codigo
+
+def _gen(self, node):
+    if not node:
+        return None
+    t = node.get("type", "")
+    method = getattr(self, f"_g_{t}", self._g_default)
+    return method(node)
+\end{lstlisting}
+
+\textbf{Qué hace:} \texttt{generar} resetea el estado y arranca el recorrido.
+\texttt{\_gen} es el \textbf{dispatcher}: mira el campo \texttt{type} del
+nodo del AST y llama al método \texttt{\_g\_<Tipo>}, p.\,ej.\
+\texttt{\_g\_If} para un nodo \texttt{If}. Es un visitor implementado con
+\texttt{getattr}, sin \texttt{if/elif} repetitivos.
+
+\subsection{Expresiones binarias --- patrón post-orden}
+
+\begin{lstlisting}[style=py]
+if t == "BinaryOp":
+    izq = self._g_expr(node["left"])    # subarbol izquierdo
+    der = self._g_expr(node["right"])   # subarbol derecho
+    tmp = self._nuevo_temp()
+    op_tipo = node["op"]["tipo"]
+    op = _BIN_TIPOS.get(op_tipo, node["op"]["valor"])
+    self.emit(op, izq, der, tmp)
+    return tmp
+\end{lstlisting}
+
+\textbf{Qué hace:} traduce \texttt{a op b} en TAC. Primero genera el código
+del operando izquierdo y obtiene el lugar (variable o temporal) donde
+quedó su resultado; lo mismo con el derecho; pide un temporal nuevo y
+emite el cuádruplo \texttt{tmp = izq op der}. El temporal devuelto se
+encadena en operaciones más grandes: \texttt{(a+b)*c} produce
+\texttt{\$t1 = a + b}\ y luego \texttt{\$t2 = \$t1 * c}.
+
+\subsection{Estructuras de control}
+
+\subsubsection{If / else}
+
+\begin{lstlisting}[style=py]
+def _g_If(self, node):
+    cond = self._g_expr(node.get("cond"))
+    L_else = self._nueva_etiq()
+    L_end  = self._nueva_etiq() if node.get("elseBody") else L_else
+
+    self.emit("if_false", cond, None, L_else)
+    self._gen(node.get("body"))
+    if node.get("elseBody"):
+        self.emit("goto", None, None, L_end)
+        self.emit("label", None, None, L_else)
+        self._gen(node["elseBody"])
+        self.emit("label", None, None, L_end)
+    else:
+        self.emit("label", None, None, L_else)
+\end{lstlisting}
+
+\textbf{Qué hace:} si la condición es falsa salta a \texttt{L\_else};
+si no, ejecuta el cuerpo. Cuando hay \texttt{else}, después del cuerpo se
+hace \texttt{goto L\_end} para no caer en el bloque \texttt{else}.
+Las dos etiquetas marcan los puntos de aterrizaje.
+
+\subsubsection{While}
+
+\begin{lstlisting}[style=py]
+def _g_While(self, node):
+    L_inicio = self._nueva_etiq()
+    L_fin    = self._nueva_etiq()
+    self.emit("label", None, None, L_inicio)
+    cond = self._g_expr(node.get("cond"))
+    self.emit("if_false", cond, None, L_fin)
+    self._gen(node.get("body"))
+    self.emit("goto", None, None, L_inicio)
+    self.emit("label", None, None, L_fin)
+\end{lstlisting}
+
+\textbf{Qué hace:} pone una etiqueta al inicio del lazo, evalúa la condición,
+salta al final si es falsa, ejecuta el cuerpo y vuelve al inicio con un
+\texttt{goto}. \texttt{L\_fin} es el destino tanto del \texttt{ifFalse}
+como del eventual \textit{break} (no implementado en esta fase).
+
+\subsubsection{Print}
+
+\begin{lstlisting}[style=py]
+def _g_Print(self, node):
+    arg = self._g_expr(node.get("arg"))
+    self.emit("print", arg, None, None)
+\end{lstlisting}
+
+\textbf{Qué hace:} genera el código para evaluar el argumento (puede ser
+una expresión compleja) y emite un cuádruplo \texttt{print arg}.
+
+\subsection{Ejemplo de salida}
+
+Código fuente:
+
+\begin{lstlisting}[style=tac]
+int a = 3;
+int b = 4;
+int c = a + b;
+if (c > 5) { print(c); } else { print(0); }
+\end{lstlisting}
+
+TAC producido por \texttt{GeneradorTAC}:
+
+\begin{lstlisting}[style=tac,basicstyle=\ttfamily\footnotesize\color{verdeTAC}]
+1:  a = 3
+2:  b = 4
+3:  $t1 = a + b
+4:  c = $t1
+5:  $t2 = c > 5
+6:  ifFalse $t2 goto $L1
+7:  print c
+8:  goto $L2
+9:  $L1:
+10: print 0
+11: $L2:
+\end{lstlisting}
+
+\section{Optimización: \texttt{backend/optimizador.py}}
+
+\subsection{Tabla de operaciones evaluables en compile-time}
+
+\begin{lstlisting}[style=py]
+_BIN_OPS = {
+    "+":  lambda a, b: a + b,
+    "-":  lambda a, b: a - b,
+    "*":  lambda a, b: a * b,
+    "/":  lambda a, b: a / b if isinstance(a, float) or isinstance(b, float) else a // b,
+    "%":  lambda a, b: a % b,
+    "==": lambda a, b: a == b,
+    "!=": lambda a, b: a != b,
+    "<":  lambda a, b: a < b,   ">":  lambda a, b: a > b,
+    "<=": lambda a, b: a <= b,  ">=": lambda a, b: a >= b,
+    "&&": lambda a, b: bool(a) and bool(b),
+    "||": lambda a, b: bool(a) or bool(b),
+}
+\end{lstlisting}
+
+\textbf{Qué hace:} mapea cada operador del TAC a su implementación Python.
+Lo usa el \textit{constant folding} para evaluar la operación si los dos
+argumentos resultan ser constantes literales.
+
+\subsection{Pasada 1 --- Constant Folding y simplificación algebraica}
+
+\begin{lstlisting}[style=py]
+def _constant_folding(codigo):
+    nuevo = []
+    cambio = False
+    for q in codigo:
+        if q.op in _BIN_OPS:
+            a1, a2 = q.arg1, q.arg2
+            # Identidades algebraicas
+            if q.op == "+" and a1 == "0":
+                nuevo.append(Quad("=", a2, None, q.dest)); cambio = True; continue
+            if q.op == "+" and a2 == "0":
+                nuevo.append(Quad("=", a1, None, q.dest)); cambio = True; continue
+            if q.op == "-" and a2 == "0":
+                nuevo.append(Quad("=", a1, None, q.dest)); cambio = True; continue
+            if q.op == "*" and (a1 == "1"):
+                nuevo.append(Quad("=", a2, None, q.dest)); cambio = True; continue
+            if q.op == "*" and (a2 == "1"):
+                nuevo.append(Quad("=", a1, None, q.dest)); cambio = True; continue
+            if q.op == "*" and (a1 == "0" or a2 == "0"):
+                nuevo.append(Quad("=", "0", None, q.dest)); cambio = True; continue
+            # Folding numerico
+            if _es_numero(a1) and _es_numero(a2):
+                r = _BIN_OPS[q.op](_to_num(a1), _to_num(a2))
+                nuevo.append(Quad("=", _fmt(r), None, q.dest))
+                cambio = True; continue
+        nuevo.append(q)
+    return nuevo, cambio
+\end{lstlisting}
+
+\textbf{Qué hace:} para cada cuádruplo binario, primero detecta
+\textit{identidades algebraicas} (\texttt{x+0}, \texttt{x*1},
+\texttt{x*0}\dots) y reemplaza la operación por una asignación directa.
+Después, si los dos operandos son constantes numéricas, calcula el
+resultado y reemplaza el cuádruplo por \texttt{dest = <resultado>}.
+Devuelve el nuevo código y un flag \texttt{cambio}.
+
+\subsection{Pasada 2 --- Constant / Copy Propagation}
+
+\begin{lstlisting}[style=py]
+def _propagation(codigo):
+    nuevo = []
+    env = {}             # variable/temp -> valor conocido
+    cambio = False
+
+    def reemplazar(x):
+        return env.get(x, x) if x is not None else x
+
+    for q in codigo:
+        if q.op == "label":
+            env = {}                 # se invalida en bordes de bloques
+            nuevo.append(q); continue
+        if q.op in ("goto", "if_false", "if_true"):
+            nuevo.append(Quad(q.op, reemplazar(q.arg1), reemplazar(q.arg2), q.dest))
+            env = {}; continue
+        if q.op == "=":
+            valor = reemplazar(q.arg1)
+            nuevo.append(Quad("=", valor, None, q.dest))
+            env[q.dest] = valor      # ahora dest "es" valor
+            continue
+        # Resto: reemplazar argumentos
+        a1 = reemplazar(q.arg1); a2 = reemplazar(q.arg2)
+        nuevo.append(Quad(q.op, a1, a2, q.dest))
+        if q.dest is not None:
+            env.pop(q.dest, None)
+    return nuevo, cambio
+\end{lstlisting}
+
+\textbf{Qué hace:} mantiene un diccionario \texttt{env} con los valores que
+conoce de cada variable/temporal. Cuando ve \texttt{x = 5}, recuerda
+\texttt{env["x"] = "5"}. Cuando ve un uso posterior de \texttt{x}, lo
+reemplaza por \texttt{"5"}. El entorno se \textbf{invalida} al cruzar una
+etiqueta o un salto, porque ahí pueden venir valores de otros caminos.
+Cualquier reasignación de \texttt{dest} también borra entradas viejas
+asociadas a ese destino.
+
+\subsection{Pasada 3 --- Branch Pruning}
+
+\begin{lstlisting}[style=py]
+def _branch_pruning(codigo):
+    nuevo = []
+    cambio = False
+    for q in codigo:
+        if q.op == "if_false":
+            if q.arg1 in ("true", "True", "1"):
+                cambio = True; continue                   # ifFalse true   -> elimina
+            if q.arg1 in ("false", "False", "0"):
+                nuevo.append(Quad("goto", None, None, q.dest))
+                cambio = True; continue                   # ifFalse false  -> goto
+        if q.op == "if_true":
+            if q.arg1 in ("false", "False", "0"):
+                cambio = True; continue
+            if q.arg1 in ("true", "True", "1"):
+                nuevo.append(Quad("goto", None, None, q.dest))
+                cambio = True; continue
+        nuevo.append(q)
+    return nuevo, cambio
+\end{lstlisting}
+
+\textbf{Qué hace:} cuando la pasada de \textit{propagation} dejó la condición
+de un salto convertida en literal (\texttt{true}/\texttt{false}), aquí se
+elimina el salto inútil o se convierte en un \texttt{goto} incondicional.
+
+\subsection{Pasada 4 --- Dead-Code Elimination}
+
+\begin{lstlisting}[style=py]
+def _dead_code(codigo):
+    leidos = set()
+    for q in codigo:
+        for a in (q.arg1, q.arg2):
+            if a is not None: leidos.add(a)
+        if q.op in ("goto", "if_false", "if_true") and q.dest:
+            leidos.add(q.dest)
+
+    nuevo = []
+    cambio = False
+    for q in codigo:
+        if q.op == "=" or q.op in _BIN_OPS or q.op == "!":
+            if q.dest and _es_temp(q.dest) and q.dest not in leidos:
+                cambio = True; continue           # temporal no leido => fuera
+        nuevo.append(q)
+    return nuevo, cambio
+\end{lstlisting}
+
+\textbf{Qué hace:} primero escanea \emph{todo} el código y arma el conjunto
+de nombres que aparecen como \textbf{leídos} (en \texttt{arg1} o
+\texttt{arg2}, o como destino de un salto). Luego elimina los cuádruplos
+que escriben en un \textbf{temporal} (\texttt{\$tn}) que nunca se leyó.
+Sólo se borran temporales: las variables del usuario se conservan aunque
+parezcan muertas, porque pueden tener efecto observable
+(\texttt{print} posterior, scope externo, etc.).
+
+\subsection{Pasada 5 --- Jump Threading}
+
+\begin{lstlisting}[style=py]
+def _jump_threading(codigo):
+    nuevo = []
+    cambio = False
+    i = 0
+    while i < len(codigo):
+        q = codigo[i]
+        if (q.op == "goto"
+                and i + 1 < len(codigo)
+                and codigo[i + 1].op == "label"
+                and codigo[i + 1].dest == q.dest):
+            cambio = True; i += 1; continue   # goto L seguido de label L: borra goto
+        nuevo.append(q); i += 1
+
+    referenciadas = set()                     # etiquetas todavia usadas
+    for q in nuevo:
+        if q.op in ("goto","if_false","if_true") and q.dest:
+            referenciadas.add(q.dest)
+    final = []
+    for q in nuevo:
+        if q.op == "label" and q.dest not in referenciadas:
+            cambio = True; continue           # label huerfana
+        final.append(q)
+    return final, cambio
+\end{lstlisting}
+
+\textbf{Qué hace:} dos limpiezas. Primero, si encuentra un
+\texttt{goto L} inmediatamente seguido de \texttt{L:}, borra el goto
+porque el flujo cae igual a la etiqueta. Segundo, calcula qué etiquetas
+quedaron \emph{referenciadas} y elimina las que ya no apunta nadie.
+
+\subsection{Driver: \texttt{optimizar()} --- punto fijo}
+
+\begin{lstlisting}[style=py]
+def optimizar(codigo, max_iter: int = 12):
+    actual = deepcopy(codigo)
+    traza  = []
+    pasadas = [
+        ("Constant Folding & Algebraic", _constant_folding),
+        ("Constant / Copy Propagation",  _propagation),
+        ("Branch Pruning",               _branch_pruning),
+        ("Dead-Code Elimination",        _dead_code),
+        ("Jump Threading",               _jump_threading),
+    ]
+
+    for it in range(max_iter):
+        cambio_global = False
+        for nombre, fn in pasadas:
+            antes = len(actual)
+            actual, cambio = fn(actual)
+            despues = len(actual)
+            if cambio:
+                traza.append({"iter": it+1, "pasada": nombre,
+                              "antes": antes, "despues": despues,
+                              "delta": despues - antes})
+                cambio_global = True
+        if not cambio_global:
+            break
+    return actual, traza
+\end{lstlisting}
+
+\textbf{Qué hace:} aplica las cinco pasadas en orden, una y otra vez, hasta
+que una iteración completa no haga ningún cambio (\textbf{punto fijo}) o
+se llegue a \texttt{max\_iter}. Cada vez que una pasada modifica el
+código, se anota una entrada en \texttt{traza} con el nombre, el tamaño
+antes/después y el delta. Devuelve \texttt{(codigo\_optimizado, traza)}.
+
+\subsection{Antes y después}
+
+Código fuente:
+
+\begin{lstlisting}[style=tac]
+int a = 3;  int b = 4;
+int c = a + b;     int d = c * 2;
+int e = d - 0;     int f = e * 1;
+print(f);
+\end{lstlisting}
+
+\begin{minipage}[t]{0.48\textwidth}
+\textbf{TAC original}
+\begin{lstlisting}[style=tac,basicstyle=\ttfamily\footnotesize\color{verdeTAC}]
+a = 3
+b = 4
+$t1 = a + b
+c = $t1
+$t2 = c * 2
+d = $t2
+$t3 = d - 0
+e = $t3
+$t4 = e * 1
+f = $t4
+print f
+\end{lstlisting}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\textbf{TAC optimizado}
+\begin{lstlisting}[style=tac,basicstyle=\ttfamily\footnotesize\color{rojoOpt}]
+a = 3
+b = 4
+c = 7
+d = 14
+e = 14
+f = 14
+print 14
+\end{lstlisting}
+\end{minipage}
+
+\section{Orquestador: \texttt{bridge.py}}
+
+\begin{lstlisting}[style=py]
+from frontend  import Lexer, build_tree, GeneradorTAC
+from intermedio import formatear_tac
+from backend   import optimizar
+
+# 1) lexer
+lexer = Lexer()
+tokens_info, tabla, errores = lexer.analizar(codigo)
+
+# 2) parser -> AST -> TAC
+ast   = build_tree(tokens_info)
+quads = GeneradorTAC().generar(ast)
+tac_filas = formatear_tac(quads)
+
+# 3) optimizador
+quads_opt, traza = optimizar(quads)
+tac_opt_filas    = formatear_tac(quads_opt)
+
+# 4) metricas + JSON
+metricas = {
+    "cuad_orig": len(quads), "cuad_opt": len(quads_opt),
+    "reduccion_pct": round(100.0*(len(quads)-len(quads_opt))/len(quads), 1),
+    "temps_orig": _contar_temps(quads), "temps_opt": _contar_temps(quads_opt),
+}
+print(json.dumps({
+    "tokens": tokens_info, "simbolos": simbolos_json, "errores": errores,
+    "tac": tac_filas, "tac_optimizado": tac_opt_filas,
+    "metricas": metricas, "traza_optimizacion": traza,
+}, ensure_ascii=False))
+\end{lstlisting}
+
+\textbf{Qué hace:} es el único archivo que une el frontend con el backend.
+Hace el pipeline completo \emph{lexer $\to$ parser $\to$ generador TAC
+$\to$ optimizador} y empaqueta todo (tokens, símbolos, errores, TAC
+original, TAC optimizado, métricas y traza) como un único objeto JSON
+que escribe a \texttt{stdout}. La UI lo invoca, lee el JSON y pinta los
+paneles.
+
+\section{Parte visual: pestaña de Código Intermedio en \texttt{index.php}}
+
+\subsection{Lectura del JSON}
+
+\begin{lstlisting}[style=js]
+const tac    = data.tac           || [];
+const tacOpt = data.tac_optimizado|| [];
+const metr   = data.metricas      || {};
+const traza  = data.traza_optimizacion || [];
+
+renderIntermediate(tac, tacOpt, metr, traza);
+\end{lstlisting}
+
+\textbf{Qué hace:} extrae los cuatro campos del JSON producido por
+\texttt{bridge.py} y se los pasa a la función de render.
+
+\subsection{Render: tablas, pretty, métricas y traza}
+
+\begin{lstlisting}[style=js]
+function renderIntermediate(tac, tacOpt, metr, traza){
+  // Tablas (op | arg1 | arg2 | dest)
+  document.getElementById('ir-body-orig').innerHTML = tac.map(_irRowHtml).join('');
+  document.getElementById('ir-body-opt').innerHTML  = tacOpt.map(_irRowHtml).join('');
+
+  // Vista pretty-printer (texto plano alineado)
+  document.getElementById('ir-pre-orig').textContent = _irPretty(tac);
+  document.getElementById('ir-pre-opt').textContent  = _irPretty(tacOpt);
+  document.getElementById('ir-cmp-orig-n').textContent = `${tac.length} cuadruplos`;
+  document.getElementById('ir-cmp-opt-n').textContent  = `${tacOpt.length} cuadruplos`;
+
+  // Traza del optimizador
+  document.getElementById('ir-traza-body').innerHTML = (traza||[]).map(t => {
+    const dColor = t.delta<0 ? 'var(--green)' : (t.delta>0 ? 'var(--red)' : 'var(--t3)');
+    const dStr   = t.delta>0 ? `+${t.delta}` : String(t.delta);
+    return `<tr>
+      <td>${t.iter}</td><td>${escH(t.pasada)}</td>
+      <td>${t.antes}</td><td>${t.despues}</td>
+      <td style="color:${dColor}">${dStr}</td></tr>`;
+  }).join('');
+
+  // Metricas
+  const co = metr.cuad_orig ?? tac.length;
+  const cp = metr.cuad_opt  ?? tacOpt.length;
+  document.getElementById('ir-stats').innerHTML =
+    `Cuadruplos: <b>${co}</b> -> <b>${cp}</b> &middot; ` +
+    `Reduccion: <b>${metr.reduccion_pct ?? 0}%</b> &middot; ` +
+    `Temporales: <b>${metr.temps_orig ?? 0}</b> -> <b>${metr.temps_opt ?? 0}</b>`;
+}
+\end{lstlisting}
+
+\textbf{Qué hace cada bloque:}
+\begin{itemize}[leftmargin=*,nosep]
+  \item \textbf{Tablas}: rellena las tablas de TAC original y optimizado
+        con una fila por cuádruplo (\texttt{op}, \texttt{arg1},
+        \texttt{arg2}, \texttt{dest}).
+  \item \textbf{Pretty}: escribe la versión legible
+        (estilo \texttt{c = \$t1} o \texttt{print x}) producida
+        en Python por \texttt{formatear\_tac}.
+  \item \textbf{Traza}: una fila por pasada que hizo cambios. El delta se
+        pinta en verde si redujo y en rojo si creció (no sucede en las
+        pasadas implementadas pero deja la columna preparada).
+  \item \textbf{Métricas}: tarjeta con cuádruplos antes/después,
+        porcentaje de reducción y número de temporales.
+\end{itemize}
+
+\subsection{Sub-vistas}
+
+\begin{lstlisting}[style=js]
+function switchIRSub(sub){
+  document.querySelectorAll('.ir-view').forEach(v=>v.style.display='none');
+  const map = {orig:'ir-view-orig', opt:'ir-view-opt',
+               cmp:'ir-view-cmp',   info:'ir-view-info'};
+  const target = document.getElementById(map[sub] || map.orig);
+  if(target) target.style.display = (sub==='cmp') ? 'flex' : 'block';
+}
+\end{lstlisting}
+
+\textbf{Qué hace:} permite alternar entre cuatro vistas dentro de la
+pestaña: \texttt{Original}, \texttt{Optimizado}, \texttt{Comparación}
+(lado a lado) e \texttt{Info}. Oculta todas las vistas y muestra sólo
+la elegida.
+
+\section{Conclusión}
+
+La fase 2 deja el compilador con tres piezas bien diferenciadas:
+
+\begin{itemize}[leftmargin=*]
+  \item Un \textbf{frontend} (\texttt{lexer + parser + generador\_intermedio})
+        que produce un AST y de ahí el TAC.
+  \item Un \textbf{contrato} (\texttt{intermedio.py}, la dataclass
+        \texttt{Quad}) que ambos lados conocen y nada más.
+  \item Un \textbf{backend} (\texttt{optimizador.py}) con cinco pasadas
+        clásicas que iteran hasta punto fijo.
+\end{itemize}
+
+La interfaz visual hace explícito el efecto del optimizador (tabla
+original vs.\ optimizado, métricas y traza), lo que vuelve al
+compilador útil también como herramienta de aprendizaje:
+no sólo \emph{qué} se redujo, sino también \emph{por qué} pasada y en
+qué iteración.
+
+\end{document}

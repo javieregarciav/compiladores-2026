@@ -1,14 +1,11 @@
-"""Run the new TAC-rendering JS functions inside node with mocked DOM stubs,
-to verify they don't throw on real bridge.py output."""
 import re, json, subprocess, sys, os, tempfile
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PROJ = os.path.join(ROOT, "files (1)")
+PROJ = ROOT
 
-# 1. Get a real bridge.py response
 with tempfile.NamedTemporaryFile("w", suffix=".ml", delete=False, encoding="utf-8") as f:
     f.write("""int a = 3;
 int b = 4;
@@ -24,12 +21,10 @@ os.unlink(tmp)
 data = json.loads(r.stdout)
 print(f"Sample run: tokens={len(data['tokens'])}, tac={len(data['tac'])}->{len(data['tac_optimizado'])}")
 
-# 2. Extract the JS functions we want to exercise (escH + renderIntermediate + helpers)
 with open(os.path.join(PROJ, "index.php"), "r", encoding="utf-8") as f:
     php = f.read()
 js_block = re.search(r"<script>(.*?)</script>", php, re.S).group(1)
 
-# Build a mock DOM and execute the relevant code
 mock = """
 // --- minimal DOM mock so renderIntermediate doesn't throw ---
 const _doc = { _store: new Map() };
@@ -67,7 +62,6 @@ global.document = {
 function escH(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 """
 
-# Pull just the helper functions we need from the JS block via regex
 def extract_fn(name):
     pat = re.compile(r"(function\s+" + name + r"\s*\([^)]*\)\s*\{)", re.M)
     m = pat.search(js_block)
@@ -75,7 +69,7 @@ def extract_fn(name):
         return ""
     start = m.start()
     depth = 0
-    i = m.end() - 1  # position of '{'
+    i = m.end() - 1
     while i < len(js_block):
         c = js_block[i]
         if c == '{': depth += 1
@@ -86,7 +80,6 @@ def extract_fn(name):
         i += 1
     return ""
 
-# Extract: _irRowHtml, _irPretty, renderIntermediate, switchIRSub
 fns = []
 for name in ["_irRowHtml", "_irPretty", "renderIntermediate", "switchIRSub"]:
     f = extract_fn(name)
@@ -95,10 +88,8 @@ for name in ["_irRowHtml", "_irPretty", "renderIntermediate", "switchIRSub"]:
     else:
         fns.append(f)
 
-# Need _irCurrentSub global
 prelude = "let _irCurrentSub = 'orig';\n"
 
-# Wire up the test
 test = mock + prelude + "\n".join(fns) + f"""
 
 const data = {json.dumps(data, ensure_ascii=False)};

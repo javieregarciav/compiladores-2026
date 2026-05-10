@@ -1,7 +1,6 @@
-"""Check JS block in index.php for balanced braces, parens, brackets."""
 import re, sys
 
-with open('files (1)/index.php', 'r', encoding='utf-8') as f:
+with open('index.php', 'r', encoding='utf-8') as f:
     src = f.read()
 
 m = re.search(r'<script>(.*?)</script>', src, re.S)
