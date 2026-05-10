@@ -1,44 +1,19 @@
-"""
-test_lexer.py
--------------
-Suite de pruebas unitarias para el Analizador Léxico.
-Cubre: tokens básicos, palabras reservadas, errores léxicos,
-strings, decimales, comentarios y la tabla de símbolos.
-
-Ejecutar:
-    python test_lexer.py          # salida estándar
-    python -m pytest test_lexer.py -v   # con pytest
-"""
 
 import sys
 import os
 import unittest
 
-# Permite importar módulos del mismo directorio
 sys.path.insert(0, os.path.dirname(__file__))
 
-from lexer import Lexer
-from tabla_simbolos import TablaSimbolos
-
-
-# ======================================================================
-# Utilidades
-# ======================================================================
+from frontend import Lexer, TablaSimbolos
 
 def tipos_de(tokens_info: list[dict]) -> list[str]:
     return [t["tipo"] for t in tokens_info]
 
-
 def valores_de(tokens_info: list[dict]) -> list:
     return [t["valor"] for t in tokens_info]
 
-
-# ======================================================================
-# Casos de prueba
-# ======================================================================
-
 class TestTokensBasicos(unittest.TestCase):
-    """Verifica que los tokens elementales se reconozcan correctamente."""
 
     def setUp(self):
         self.lexer = Lexer()
@@ -87,9 +62,7 @@ class TestTokensBasicos(unittest.TestCase):
         toks, _, _ = self.lexer.analizar("=")
         self.assertEqual(tipos_de(toks), ["ASIGNACION"])
 
-
 class TestPalabrasReservadas(unittest.TestCase):
-    """Las palabras reservadas deben generar su token específico."""
 
     def setUp(self):
         self.lexer = Lexer()
@@ -114,9 +87,7 @@ class TestPalabrasReservadas(unittest.TestCase):
         toks, _, _ = self.lexer.analizar("null")
         self.assertEqual(tipos_de(toks), ["NULL"])
 
-
 class TestErroresLexicos(unittest.TestCase):
-    """Caracteres ilegales deben registrarse como errores sin detener el análisis."""
 
     def setUp(self):
         self.lexer = Lexer()
@@ -140,9 +111,7 @@ class TestErroresLexicos(unittest.TestCase):
         self.assertIn("INT", tipos)
         self.assertIn("ID", tipos)
 
-
 class TestComentarios(unittest.TestCase):
-    """Los comentarios de línea deben ignorarse completamente."""
 
     def setUp(self):
         self.lexer = Lexer()
@@ -156,9 +125,7 @@ class TestComentarios(unittest.TestCase):
         toks, _, _ = self.lexer.analizar("int x = 5; // valor inicial")
         self.assertNotIn("COMENTARIO", tipos_de(toks))
 
-
 class TestNumeroDeLinea(unittest.TestCase):
-    """Los tokens deben registrar su línea correctamente."""
 
     def setUp(self):
         self.lexer = Lexer()
@@ -170,13 +137,11 @@ class TestNumeroDeLinea(unittest.TestCase):
     def test_linea_multilinea(self):
         codigo = "int x;\nfloat y;"
         toks, _, _ = self.lexer.analizar(codigo)
-        # FLOAT debe estar en línea 2
+
         float_tok = next(t for t in toks if t["tipo"] == "FLOAT")
         self.assertEqual(float_tok["linea"], 2)
 
-
 class TestTablaSimbolos(unittest.TestCase):
-    """La tabla de símbolos debe llenarse correctamente desde el lexer."""
 
     def setUp(self):
         self.lexer = Lexer()
@@ -204,9 +169,7 @@ class TestTablaSimbolos(unittest.TestCase):
         _, tabla, errores = self.lexer.analizar(codigo)
         self.assertTrue(any("x" in e for e in errores))
 
-
 class TestTablaSimbolosDirecta(unittest.TestCase):
-    """Pruebas unitarias de la clase TablaSimbolos independiente."""
 
     def test_insertar_y_buscar(self):
         t = TablaSimbolos()
@@ -231,10 +194,10 @@ class TestTablaSimbolosDirecta(unittest.TestCase):
         t.insertar("global_var", "int", 1)
         t.entrar_ambito()
         t.insertar("local_var", "float", 5)
-        self.assertIsNotNone(t.buscar("global_var"))   # visible desde adentro
+        self.assertIsNotNone(t.buscar("global_var"))
         self.assertIsNotNone(t.buscar("local_var"))
         t.salir_ambito()
-        self.assertIsNone(t.buscar("local_var"))       # ya no visible
+        self.assertIsNone(t.buscar("local_var"))
 
     def test_actualizar_valor(self):
         t = TablaSimbolos()
@@ -248,13 +211,7 @@ class TestTablaSimbolosDirecta(unittest.TestCase):
         t.limpiar()
         self.assertIsNone(t.buscar("a"))
 
-
-# ======================================================================
-# Caso de integración — código fuente completo
-# ======================================================================
-
 class TestIntegracion(unittest.TestCase):
-    """Análisis de un programa completo; verifica tokens y tabla."""
 
     CODIGO = """
 int contador = 0;
@@ -298,11 +255,6 @@ if (contador == 10) {
         for tipo in ("INT", "FLOAT", "STRING", "BOOLEAN", "WHILE", "IF", "PRINT"):
             with self.subTest(tipo=tipo):
                 self.assertIn(tipo, tipos)
-
-
-# ======================================================================
-# Runner
-# ======================================================================
 
 if __name__ == "__main__":
     loader = unittest.TestLoader()

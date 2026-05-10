@@ -1,28 +1,18 @@
-"""
-main.py  —  Mini-Compilador v2.0
-================================
-IDE de escritorio (Tkinter) que replica la interfaz web neón:
-  - Banner académico con los 4 integrantes
-  - Header con logo
-  - Pestañas: Editor / Tokens / Árbol Sint. / Semántico / Errores
-  - Editor con syntax highlighting y numeración de líneas
-  - Árbol sintáctico visual en Canvas (nodos coloreados + bezier)
-  - Tabla de símbolos lateral permanente
-  - Panel de estadísticas con cajas numéricas
-  - Menú desplegable de 7 ejemplos (Toplevel flotante funcional)
-  - Tema oscuro neón idéntico al HTML
-"""
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font as tkfont
 import sys, os, re as _re
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lexer import Lexer
 
-# ══════════════════════════════════════════════════════════════════
-#  PALETA DE COLORES (idéntica al CSS del navegador)
-# ══════════════════════════════════════════════════════════════════
+from frontend import (
+    Lexer,
+    build_tree, get_kids, node_label, RESERVED, TIPOS_DATO,
+    GeneradorTAC,
+)
+from intermedio import formatear_tac
+from backend import optimizar
+
 C = {
     "bg0": "#020408", "bg1": "#040810", "bg2": "#060d18",
     "bg3": "#0a1628", "bg4": "#0d1e35",
@@ -77,9 +67,86 @@ NODE_ICONS = {
     "StringLit":'"',"BoolLit":"B","Identifier":"$","Token":"T","Keyword":"K",
 }
 
-# ══════════════════════════════════════════════════════════════════
-#  EJEMPLOS
-# ══════════════════════════════════════════════════════════════════
+_TEXTO_INFO_TAC = """\
+# CODIGO INTERMEDIO  =  FRONTERA FRONT-END / BACK-END
+
+El codigo intermedio es la frontera entre el FRONT-END y el BACK-END
+de un compilador. NO es solo "una etapa mas": es el contrato que
+permite separar el lenguaje fuente de la maquina destino.
+
+  FRONT-END  ---->  CODIGO INTERMEDIO  ---->  BACK-END
+  (lenguaje                (TAC)              (maquina
+   fuente)                                     objetivo)
+
+Si cambia el lenguaje fuente solo se rehace el front-end.
+Si cambia la arquitectura objetivo solo se rehace el back-end.
+El IR (representacion intermedia) es el unico punto que ambos
+lados conocen.
+
+## ESTRUCTURA DE ESTE PROYECTO
+
+  frontend/                  <- depende del lenguaje fuente
+     lexer.py                analisis lexico
+     tabla_simbolos.py       tabla de simbolos
+     parser.py               AST (analisis sintactico)
+     generador_intermedio.py emite el TAC
+
+  intermedio.py              <- contrato compartido
+     Quad                    cuadruplo (op, arg1, arg2, dest)
+     formatear_tac           pretty-printer
+
+  backend/                   <- depende de la maquina objetivo
+     optimizador.py          optimiza el TAC
+     (futuro) generador_objeto.py  emite ensamblador
+
+## TIPOS DE CODIGO INTERMEDIO
+
+  - Notacion postfija         a b +
+  - Three-Address Code (TAC)  t1 = a + b   <-- usamos este
+  - Cuadruplos / Triples
+  - SSA (Static Single Assignment)
+  - DAG (detecta subexpresiones comunes)
+
+## CUAL USA ESTE COMPILADOR
+
+  -> Three-Address Code (TAC) en formato de CUADRUPLOS:
+        ( op , arg1 , arg2 , dest )
+
+  Ejemplos:
+        a = 5             ->  ( = , 5  , _ , a  )
+        $t1 = b + c       ->  ( + , b  , c , $t1 )
+        if $t1 goto $L2   ->  ( if_false , $t1 , _ , $L2 )
+        goto $L3          ->  ( goto , _ , _ , $L3 )
+        $L2:              ->  ( label , _ , _ , $L2 )
+        print x           ->  ( print , x , _ , _ )
+
+  Nota: los temporales y etiquetas usan prefijo '$' que el lexer
+  no acepta como identificador, asi nunca chocan con variables
+  del usuario llamadas t1 o L1.
+
+## OPTIMIZACIONES (BACK-END)
+
+  El optimizador ejecuta varias pasadas hasta punto fijo:
+
+  1. Constant Folding         3 + 4   ->  7
+  2. Algebraic Simplification x * 1   ->  x   ;   x + 0  ->  x
+  3. Constant Propagation     x = 5; t = x + 1  ->  t = 5 + 1
+  4. Copy Propagation         a = b; c = a + 1  ->  c = b + 1
+  5. Dead-Code Elimination    elimina temporales nunca leidos
+  6. Branch Pruning           ifFalse true   -> elimina el salto
+  7. Jump Threading           goto L; L:     -> elimina el goto
+
+## COMO LEER LAS TABLAS
+
+  - Sub-vista "Sin optimizar"  -> TAC tal cual lo emite el front-end.
+  - Sub-vista "Optimizado"     -> tras pasar por el back-end.
+  - Sub-vista "Comparacion"    -> ambos lados a lado.
+
+  Metricas en la barra:
+        cuadruplos antes -> despues   (reduccion %)
+        temporales antes -> despues
+"""
+
 EJEMPLOS = [
 ("01 Variables y Tipos", """// Ejemplo 01 - Variables y Tipos de Dato
 int edad = 25;
@@ -250,239 +317,6 @@ print(cursoExitoso);
 """),
 ]
 
-RESERVED = {
-    "int":"INT","float":"FLOAT","string":"STRING","boolean":"BOOLEAN",
-    "if":"IF","else":"ELSE","while":"WHILE","for":"FOR","return":"RETURN",
-    "true":"TRUE","false":"FALSE","print":"PRINT","input":"INPUT",
-    "and":"AND","or":"OR","not":"NOT","null":"NULL",
-}
-TIPOS_DATO = {"INT","FLOAT","STRING","BOOLEAN"}
-
-
-def build_tree(tokens):
-    toks = [t for t in tokens if t["tipo"] not in ("NUEVA_LINEA","ESPACIO","COMENTARIO")]
-    pos = [0]
-
-    def peek(off=0):
-        i = pos[0]+off
-        return toks[i] if i < len(toks) else None
-    def consume():
-        t = toks[pos[0]] if pos[0] < len(toks) else None
-        pos[0] += 1; return t
-    def expect(tipo):
-        t = peek()
-        if t and t["tipo"] == tipo: pos[0] += 1; return t
-        return None
-
-    def parse_program():
-        stmts = []
-        while pos[0] < len(toks):
-            s = parse_stmt()
-            if s: stmts.append(s)
-            else: pos[0] += 1
-        return {"type":"Program","children":stmts}
-
-    def parse_stmt():
-        t = peek()
-        if not t: return None
-        if t["tipo"] in TIPOS_DATO: return parse_decl()
-        if t["tipo"] == "IF":       return parse_if()
-        if t["tipo"] == "WHILE":    return parse_while()
-        if t["tipo"] == "FOR":      return parse_for()
-        if t["tipo"] in ("PRINT","INPUT"): return parse_print()
-        if t["tipo"] == "ID":
-            n = peek(1)
-            if n and n["tipo"] == "ASIGNACION": return parse_assign()
-        if t["tipo"] == "LLAVE_IZQ": return parse_block()
-        if t["tipo"] == "PUNTO_COMA": consume(); return None
-        tok = consume(); return {"type":"Unknown","token":tok}
-
-    def parse_decl():
-        dt = consume()
-        id_ = consume() if peek() and peek()["tipo"]=="ID" else None
-        expr = None
-        if peek() and peek()["tipo"]=="ASIGNACION": consume(); expr = parse_expr()
-        expect("PUNTO_COMA")
-        return {"type":"Declaration","dataType":dt,"id":id_,"expr":expr}
-
-    def parse_assign():
-        id_ = consume(); expect("ASIGNACION")
-        expr = parse_expr(); expect("PUNTO_COMA")
-        return {"type":"Assignment","id":id_,"expr":expr}
-
-    def parse_if():
-        kw = consume(); expect("PAREN_IZQ")
-        cond = parse_expr(); expect("PAREN_DER")
-        body = parse_block(); else_body = None
-        if peek() and peek()["tipo"]=="ELSE": consume(); else_body = parse_block()
-        return {"type":"If","kw":kw,"cond":cond,"body":body,"elseBody":else_body}
-
-    def parse_while():
-        kw = consume(); expect("PAREN_IZQ")
-        cond = parse_expr(); expect("PAREN_DER")
-        body = parse_block()
-        return {"type":"While","kw":kw,"cond":cond,"body":body}
-
-    def parse_for():
-        kw = consume(); expect("PAREN_IZQ")
-        init = parse_stmt(); cond = parse_expr(); expect("PUNTO_COMA")
-        upd_id = consume() if peek() and peek()["tipo"]=="ID" else None
-        upd_expr = None
-        if peek() and peek()["tipo"]=="ASIGNACION": consume(); upd_expr = parse_expr()
-        expect("PAREN_DER"); body = parse_block()
-        return {"type":"For","kw":kw,"init":init,"cond":cond,"updId":upd_id,"body":body}
-
-    def parse_print():
-        kw = consume(); expect("PAREN_IZQ")
-        arg = parse_expr(); expect("PAREN_DER"); expect("PUNTO_COMA")
-        return {"type":"Print","kw":kw,"arg":arg}
-
-    def parse_block():
-        if peek() and peek()["tipo"]=="LLAVE_IZQ":
-            consume(); stmts = []
-            while pos[0]<len(toks) and not(peek() and peek()["tipo"]=="LLAVE_DER"):
-                s = parse_stmt()
-                if s: stmts.append(s)
-            expect("LLAVE_DER"); return {"type":"Block","stmts":stmts}
-        s = parse_stmt()
-        return {"type":"Block","stmts":[s] if s else []}
-
-    def parse_expr():  return parse_or()
-    def parse_or():
-        l = parse_and()
-        while peek() and peek()["tipo"]=="O_LOGICO":
-            op=consume(); r=parse_and(); l={"type":"BinaryOp","op":op,"left":l,"right":r}
-        return l
-    def parse_and():
-        l = parse_eq()
-        while peek() and peek()["tipo"]=="Y_LOGICO":
-            op=consume(); r=parse_eq(); l={"type":"BinaryOp","op":op,"left":l,"right":r}
-        return l
-    def parse_eq():
-        l = parse_rel()
-        while peek() and peek()["tipo"] in ("IGUAL","DIFERENTE"):
-            op=consume(); r=parse_rel(); l={"type":"BinaryOp","op":op,"left":l,"right":r}
-        return l
-    def parse_rel():
-        l = parse_add()
-        while peek() and peek()["tipo"] in ("MENOR","MAYOR","MENOR_IGUAL","MAYOR_IGUAL"):
-            op=consume(); r=parse_add(); l={"type":"BinaryOp","op":op,"left":l,"right":r}
-        return l
-    def parse_add():
-        l = parse_mul()
-        while peek() and peek()["tipo"] in ("MAS","MENOS"):
-            op=consume(); r=parse_mul(); l={"type":"BinaryOp","op":op,"left":l,"right":r}
-        return l
-    def parse_mul():
-        l = parse_unary()
-        while peek() and peek()["tipo"] in ("MULT","DIV","MOD"):
-            op=consume(); r=parse_unary(); l={"type":"BinaryOp","op":op,"left":l,"right":r}
-        return l
-    def parse_unary():
-        if peek() and peek()["tipo"]=="NO_LOGICO":
-            op=consume(); operand=parse_unary()
-            return {"type":"UnaryOp","op":op,"operand":operand}
-        return parse_primary()
-    def parse_primary():
-        t = peek()
-        if not t: return None
-        if t["tipo"]=="PAREN_IZQ":
-            consume(); e=parse_expr(); expect("PAREN_DER")
-            return {"type":"Group","expr":e}
-        if t["tipo"] in ("ENTERO","DECIMAL"): return {"type":"Literal","token":consume()}
-        if t["tipo"]=="CADENA": return {"type":"StringLit","token":consume()}
-        if t["tipo"] in ("TRUE","FALSE","NULL"): return {"type":"BoolLit","token":consume()}
-        if t["tipo"]=="ID":
-            id_=consume()
-            if peek() and peek()["tipo"]=="PAREN_IZQ":
-                consume(); args=[]
-                while peek() and peek()["tipo"]!="PAREN_DER":
-                    args.append(parse_expr())
-                    if peek() and peek()["tipo"]=="COMA": consume()
-                expect("PAREN_DER")
-                return {"type":"Call","id":id_,"args":args}
-            return {"type":"Identifier","token":id_}
-        if t["tipo"] in TIPOS_DATO or t["tipo"] in ("IF","ELSE","WHILE","FOR","RETURN","PRINT","INPUT","AND","OR","NOT"):
-            return {"type":"Keyword","token":consume()}
-        return {"type":"Token","token":consume()}
-
-    return parse_program()
-
-
-def get_kids(node):
-    if not node: return []
-    t = node.get("type","")
-    if t == "Program":     return [c for c in node.get("children",[]) if c]
-    if t == "Block":       return [c for c in node.get("stmts",[]) if c]
-    if t == "Declaration":
-        c = []
-        if node.get("dataType"): c.append({"type":"Token","token":node["dataType"],"_label":"Tipo"})
-        if node.get("id"):       c.append({"type":"Token","token":node["id"],"_label":"ID"})
-        if node.get("expr"):     c.append({**node["expr"],"_label":"valor"})
-        return c
-    if t == "Assignment":
-        c = []
-        if node.get("id"):   c.append({"type":"Identifier","token":node["id"],"_label":"var"})
-        if node.get("expr"): c.append({**node["expr"],"_label":"expr"})
-        return c
-    if t == "If":
-        c = []
-        if node.get("cond"):     c.append({**node["cond"],"_label":"cond"})
-        if node.get("body"):     c.append({**node["body"],"_label":"then"})
-        if node.get("elseBody"): c.append({**node["elseBody"],"_label":"else"})
-        return c
-    if t == "While":
-        c = []
-        if node.get("cond"): c.append({**node["cond"],"_label":"cond"})
-        if node.get("body"): c.append(node["body"])
-        return c
-    if t == "For":
-        c = []
-        if node.get("init"):  c.append({**node["init"],"_label":"init"})
-        if node.get("cond"):  c.append({**node["cond"],"_label":"cond"})
-        if node.get("updId"): c.append({"type":"Identifier","token":node["updId"],"_label":"upd"})
-        if node.get("body"):  c.append(node["body"])
-        return c
-    if t == "Print":    return [{**node["arg"],"_label":"arg"}] if node.get("arg") else []
-    if t == "Call":     return [a for a in node.get("args",[]) if a]
-    if t == "BinaryOp":
-        c = []
-        if node.get("left"):  c.append({**node["left"],"_label":"izq"})
-        if node.get("right"): c.append({**node["right"],"_label":"der"})
-        return c
-    if t == "UnaryOp":  return [node["operand"]] if node.get("operand") else []
-    if t == "Group":    return [node["expr"]] if node.get("expr") else []
-    return []
-
-
-def node_label(node):
-    t = node.get("type","")
-    tok = node.get("token") or node.get("kw")
-    val = tok["valor"] if tok else ""
-    if t=="Program":      return "PROGRAMA"
-    if t=="Block":        return "BLOQUE"
-    if t=="Declaration":
-        dt = (node.get("dataType") or {}); id_ = (node.get("id") or {})
-        return ("DECL " + dt.get("valor","") + " " + id_.get("valor","")).strip()
-    if t=="Assignment":
-        id_ = (node.get("id") or {}); return ("ASIG " + id_.get("valor","")).strip()
-    if t=="If":           return "IF"
-    if t=="While":        return "WHILE"
-    if t=="For":          return "FOR"
-    if t=="Print":        return "PRINT"
-    if t=="Call":
-        id_ = (node.get("id") or {}); return id_.get("valor","CALL") + "()"
-    if t=="BinaryOp":
-        op = (node.get("op") or {}); return "OP  " + op.get("valor","?")
-    if t=="UnaryOp":      return "UNARIO !"
-    if t=="Group":        return "( expr )"
-    if t=="StringLit":    return '"' + val[:10] + ("..." if len(val)>10 else "") + '"'
-    return val[:14] if val else t
-
-
-# ══════════════════════════════════════════════════════════════════
-#  NUMERADOR DE LINEAS
-# ══════════════════════════════════════════════════════════════════
 class NumeradorLineas(tk.Canvas):
     def __init__(self, master, editor, **kw):
         super().__init__(master, width=46, bg=C["bg1"], highlightthickness=0, **kw)
@@ -502,10 +336,6 @@ class NumeradorLineas(tk.Canvas):
             i = self._ed.index(f"{i}+1line")
             if self._ed.compare(i,">=","end"): break
 
-
-# ══════════════════════════════════════════════════════════════════
-#  ARBOL CANVAS
-# ══════════════════════════════════════════════════════════════════
 NW, NH, HGAP, VGAP = 132, 40, 24, 56
 
 class ArbolCanvas(tk.Frame):
@@ -599,7 +429,6 @@ class ArbolCanvas(tk.Frame):
         fill, stroke = NODE_COLORS.get(ntype, ("#1a1a2a","#3a3a6a"))
         icon = NODE_ICONS.get(ntype,".")
 
-        # bezier edges
         for child in lay["children"]:
             ccx = child["x"] + NW/2; ccy = child["y"]
             mid_y = y + NH + VGAP/2
@@ -611,18 +440,17 @@ class ArbolCanvas(tk.Frame):
                 pts.extend([bx, by])
             self._cv.create_line(*pts, fill=stroke, width=1.5, smooth=False)
 
-        # glow
         self._cv.create_rectangle(x+2,y+2,x+NW-2,y+NH-2, fill=stroke, outline="", stipple="gray12")
-        # box
+
         self._cv.create_rectangle(x,y,x+NW,y+NH, fill=fill, outline=stroke, width=1.5, tags=("node",))
-        # collapse dot
+
         if get_kids(node):
             dot_fill = stroke if node.get("_id") in self._collapsed else ""
             self._cv.create_oval(cx-4,y+NH-8,cx+4,y+NH-1, fill=dot_fill, outline=stroke, width=1)
-        # icon (left)
+
         self._cv.create_text(x+12, y+NH//2, text=icon, fill=stroke,
                               font=self._font_n, anchor="center")
-        # label
+
         lbl = node_label(node)
         if len(lbl) > 13: lbl = lbl[:12]+"..."
         sub = node.get("_label","")
@@ -632,11 +460,11 @@ class ArbolCanvas(tk.Frame):
         if sub:
             self._cv.create_text(cx+4, y+NH//2+8, text=sub, fill=stroke,
                                   font=self._font_s, anchor="center")
-        # click area
+
         nid = node.get("_id"); tag = f"nid_{nid}"
         self._cv.create_rectangle(x,y,x+NW,y+NH, fill="", outline="", tags=("node",tag))
         self._cv.tag_bind(tag, "<Button-1>", lambda e,i=nid: self._toggle(i))
-        # recurse
+
         for child in lay["children"]: self._draw(child)
 
     def _toggle(self, nid):
@@ -657,10 +485,6 @@ class ArbolCanvas(tk.Frame):
             for k in get_kids(self._root_node): collect(k)
         self._redraw()
 
-
-# ══════════════════════════════════════════════════════════════════
-#  VENTANA PRINCIPAL
-# ══════════════════════════════════════════════════════════════════
 class MiniIDE(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -764,13 +588,14 @@ class MiniIDE(tk.Tk):
         self._build_right()
         self._build_tabs()
         self._tab_frames = {}
-        for name in ("editor","tokens","tree","semantic","errors"):
+        for name in ("editor","tokens","tree","semantic","intermediate","errors"):
             f = tk.Frame(self._left, bg=C["bg1"]); self._tab_frames[name] = f
         self._show_tab("editor")
         self._build_editor_tab()
         self._build_tokens_tab()
         self._build_tree_tab()
         self._build_semantic_tab()
+        self._build_intermediate_tab()
         self._build_errors_tab()
 
     def _build_right(self):
@@ -812,7 +637,8 @@ class MiniIDE(tk.Tk):
         tk.Frame(bar, bg=C["bd"], height=1).pack(fill="x", side="bottom")
         self._tab_btns = {}; self._badge_vars = {}
         tabs = [("editor","Editor",None),("tokens","Tokens","tokens"),
-                ("tree","Arbol Sint.","tree"),("semantic","Semantico","sem"),("errors","Errores","errors")]
+                ("tree","Arbol Sint.","tree"),("semantic","Semantico","sem"),
+                ("intermediate","Cod. Intermedio","tac"),("errors","Errores","errors")]
         for name,label,bkey in tabs:
             frm = tk.Frame(bar, bg=C["bg2"]); frm.pack(side="left")
             btn = tk.Label(frm, text=label, bg=C["bg2"], fg=C["t3"],
@@ -941,6 +767,97 @@ class MiniIDE(tk.Tk):
         self._sem_canvas.bind("<Configure>",
             lambda e: self._sem_canvas.itemconfig(self._sem_frame_id, width=e.width))
 
+    def _build_intermediate_tab(self):
+        f = self._tab_frames["intermediate"]
+        ph = tk.Frame(f, bg=C["bg2"]); ph.pack(fill="x")
+        tk.Frame(ph, bg=C["blue"], width=3).pack(side="left", fill="y")
+        tk.Label(ph, text=" CODIGO INTERMEDIO  -  TAC (3 direcciones)",
+                 bg=C["bg2"], fg=C["blue"], font=self.fn_disp, pady=7).pack(side="left")
+        self._lbl_tac_hdr = tk.Label(ph, text="---", bg=C["bg2"],
+                                      fg=C["t3"], font=self.fn_ui)
+        self._lbl_tac_hdr.pack(side="right", padx=8)
+        tk.Frame(f, bg=C["bd"], height=1).pack(fill="x")
+
+        sub = tk.Frame(f, bg=C["bg2"]); sub.pack(fill="x")
+        tk.Frame(sub, bg=C["bd"], height=1).pack(fill="x", side="bottom")
+        self._tac_subview = tk.StringVar(value="orig")
+        self._tac_sub_btns = {}
+        for key, lbl in [("orig","Sin optimizar"),("opt","Optimizado"),
+                         ("cmp","Comparacion"),("info","Que es?")]:
+            b = tk.Label(sub, text=lbl, bg=C["bg2"], fg=C["t2"], font=self.fn_disp,
+                         padx=10, pady=6, cursor="hand2",
+                         highlightthickness=1, highlightbackground=C["bd"])
+            b.pack(side="left", padx=4, pady=4)
+            b.bind("<Button-1>", lambda e, k=key: self._show_tac_sub(k))
+            self._tac_sub_btns[key] = b
+
+        self._lbl_tac_metric = tk.Label(sub, text="", bg=C["bg2"], fg=C["t3"],
+                                          font=("Consolas",9))
+        self._lbl_tac_metric.pack(side="right", padx=10)
+
+        self._tac_body = tk.Frame(f, bg=C["bg1"]); self._tac_body.pack(fill="both", expand=True)
+        self._tac_subframes = {}
+        for key in ("orig","opt","cmp","info"):
+            sf = tk.Frame(self._tac_body, bg=C["bg1"])
+            self._tac_subframes[key] = sf
+
+        self._tac_tree_orig = self._make_treeview(self._tac_subframes["orig"],
+            ("n","instruccion","op","arg1","arg2","dest"),
+            ("#","Instruccion","Op","Arg1","Arg2","Dest"),
+            (40, 280, 90, 90, 90, 90))
+        self._tac_tree_opt = self._make_treeview(self._tac_subframes["opt"],
+            ("n","instruccion","op","arg1","arg2","dest"),
+            ("#","Instruccion","Op","Arg1","Arg2","Dest"),
+            (40, 280, 90, 90, 90, 90))
+
+        cmp_outer = tk.Frame(self._tac_subframes["cmp"], bg=C["bg1"])
+        cmp_outer.pack(fill="both", expand=True)
+        cmp_left  = tk.Frame(cmp_outer, bg=C["bg1"]); cmp_left.pack(side="left", fill="both", expand=True)
+        tk.Frame(cmp_outer, bg=C["bd"], width=1).pack(side="left", fill="y")
+        cmp_right = tk.Frame(cmp_outer, bg=C["bg1"]); cmp_right.pack(side="left", fill="both", expand=True)
+        tk.Label(cmp_left,  text="ORIGINAL", bg=C["bg2"], fg=C["amber"],
+                 font=self.fn_disp, pady=4).pack(fill="x")
+        tk.Label(cmp_right, text="OPTIMIZADO", bg=C["bg2"], fg=C["green"],
+                 font=self.fn_disp, pady=4).pack(fill="x")
+        self._tac_cmp_orig = tk.Text(cmp_left, bg=C["bg1"], fg=C["t1"],
+                                       font=("Consolas",10), relief="flat", bd=0,
+                                       padx=10, pady=6, wrap="none", state="disabled")
+        self._tac_cmp_opt  = tk.Text(cmp_right, bg=C["bg1"], fg=C["t1"],
+                                       font=("Consolas",10), relief="flat", bd=0,
+                                       padx=10, pady=6, wrap="none", state="disabled")
+        self._tac_cmp_orig.pack(fill="both", expand=True)
+        self._tac_cmp_opt.pack(fill="both", expand=True)
+
+        info = tk.Text(self._tac_subframes["info"], bg=C["bg1"], fg=C["t1"],
+                        font=("Consolas",10), relief="flat", bd=0,
+                        padx=14, pady=10, wrap="word", state="normal")
+        info.insert("1.0", _TEXTO_INFO_TAC)
+        info.tag_configure("h1", foreground=C["cyan"], font=("Courier New",12,"bold"))
+        info.tag_configure("h2", foreground=C["amber"], font=("Courier New",10,"bold"))
+        info.tag_configure("code", foreground=C["green"], font=("Consolas",10))
+        info.tag_configure("note", foreground=C["t2"])
+
+        for ln_idx, line in enumerate(_TEXTO_INFO_TAC.split("\n"), start=1):
+            if line.startswith("# "):
+                info.tag_add("h1", f"{ln_idx}.0", f"{ln_idx}.end")
+            elif line.startswith("## "):
+                info.tag_add("h2", f"{ln_idx}.0", f"{ln_idx}.end")
+            elif line.startswith("    "):
+                info.tag_add("code", f"{ln_idx}.0", f"{ln_idx}.end")
+        info.configure(state="disabled")
+        info.pack(fill="both", expand=True)
+
+        self._show_tac_sub("orig")
+
+    def _show_tac_sub(self, key):
+        for k, sf in self._tac_subframes.items(): sf.pack_forget()
+        self._tac_subframes[key].pack(fill="both", expand=True)
+        for k, btn in self._tac_sub_btns.items():
+            btn.configure(fg=C["cyan"] if k == key else C["t2"],
+                          bg=C["bg3"] if k == key else C["bg2"],
+                          highlightbackground=C["cyan"] if k == key else C["bd"])
+        self._tac_subview.set(key)
+
     def _build_errors_tab(self):
         f = self._tab_frames["errors"]
         ph = tk.Frame(f, bg=C["bg2"]); ph.pack(fill="x")
@@ -993,7 +910,6 @@ class MiniIDE(tk.Tk):
                                      fg=C["t3"], font=("Consolas",9))
         self._lbl_ft_sym.pack(side="right", padx=8)
 
-    # ── EXAMPLE DROPDOWN ──────────────────────────────────────────
     def _toggle_example_menu(self, event=None):
         if self._example_menu_open: self._close_example_menu()
         else: self._open_example_menu()
@@ -1053,7 +969,6 @@ class MiniIDE(tk.Tk):
             except Exception: pass
         self._example_menu_win = None; self._example_menu_open = False
 
-    # ── HIGHLIGHTING ──────────────────────────────────────────────
     def _configure_highlighting(self):
         for tipo, color in HL.items():
             self._editor.tag_configure(f"tok_{tipo}", foreground=color)
@@ -1072,7 +987,6 @@ class MiniIDE(tk.Tk):
             ln=codigo[:m.start()].count("\n")+1; c0=m.start()-codigo[:m.start()].rfind("\n")-1
             self._editor.tag_add("tok_COMENTARIO",f"{ln}.{c0}",f"{ln}.{c0+len(m.group())}")
 
-    # ── ANALYSIS ──────────────────────────────────────────────────
     def _analyze(self):
         codigo = self._editor.get("1.0","end-1c")
         if not codigo.strip(): self._log("warn","No hay codigo para analizar."); return
@@ -1099,6 +1013,14 @@ class MiniIDE(tk.Tk):
         self._lbl_tree_hdr.configure(text="arbol construido")
         self._build_semantic_panel(tokens, simbolos, errores)
 
+        try:
+            quads = GeneradorTAC().generar(ast)
+            quads_opt, _traza = optimizar(quads)
+            self._populate_tac(quads, quads_opt)
+        except Exception as ex:
+            self._log("error", f"Error generando codigo intermedio: {ex}")
+            self._populate_tac([], [])
+
         self._console.configure(state="normal"); self._console.delete("1.0","end")
         if errores:
             self._log("warn", f"Se encontraron {len(errores)} error(es):")
@@ -1123,8 +1045,54 @@ class MiniIDE(tk.Tk):
         self._lbl_tok_count.configure(text=f"T:{len(tokens)}  S:{len(simbolos)}  E:{len(errores)}")
         for k,v in self._badge_vars.items():
             if k=="tokens": v.set(str(len(tokens)))
-            elif k in ("tree","sem"): v.set("OK")
+            elif k in ("tree","sem","tac"): v.set("OK")
             elif k=="errors": v.set(str(len(errores)) if errores else "")
+
+    def _populate_tac(self, quads, quads_opt):
+
+        for row in self._tac_tree_orig.get_children(): self._tac_tree_orig.delete(row)
+        for row in self._tac_tree_opt.get_children():  self._tac_tree_opt.delete(row)
+
+        filas_orig = formatear_tac(quads)
+        filas_opt  = formatear_tac(quads_opt)
+
+        for i, fila in enumerate(filas_orig):
+            self._tac_tree_orig.insert("","end",
+                values=(fila["n"], fila["instruccion"], fila["op"],
+                        fila["arg1"], fila["arg2"], fila["dest"]),
+                tags=("par" if i%2==0 else "impar",))
+        for i, fila in enumerate(filas_opt):
+            self._tac_tree_opt.insert("","end",
+                values=(fila["n"], fila["instruccion"], fila["op"],
+                        fila["arg1"], fila["arg2"], fila["dest"]),
+                tags=("par" if i%2==0 else "impar",))
+
+        self._tac_cmp_orig.configure(state="normal")
+        self._tac_cmp_orig.delete("1.0","end")
+        for fila in filas_orig:
+            self._tac_cmp_orig.insert("end", f"{fila['n']:>3}: {fila['instruccion']}\n")
+        self._tac_cmp_orig.configure(state="disabled")
+
+        self._tac_cmp_opt.configure(state="normal")
+        self._tac_cmp_opt.delete("1.0","end")
+        for fila in filas_opt:
+            self._tac_cmp_opt.insert("end", f"{fila['n']:>3}: {fila['instruccion']}\n")
+        self._tac_cmp_opt.configure(state="disabled")
+
+        n_o = len(quads); n_opt = len(quads_opt)
+
+        def _temps(qs):
+            tset = set()
+            for q in qs:
+                for x in (q.arg1, q.arg2, q.dest):
+                    if isinstance(x, str) and x.startswith("$t") and x[2:].isdigit():
+                        tset.add(x)
+            return len(tset)
+        t_o = _temps(quads); t_opt = _temps(quads_opt)
+        red = (1 - n_opt/n_o)*100 if n_o else 0
+        self._lbl_tac_hdr.configure(text=f"{n_o} cuadruplos -> {n_opt} (-{red:.0f}%)")
+        self._lbl_tac_metric.configure(
+            text=f"cuadruplos: {n_o} -> {n_opt}    temporales: {t_o} -> {t_opt}")
 
     def _build_semantic_panel(self, tokens, simbolos, errores):
         for w in self._sem_frame.winfo_children(): w.destroy()
@@ -1231,6 +1199,12 @@ class MiniIDE(tk.Tk):
         self._editor.delete("1.0","end")
         for row in self._tok_tree.get_children(): self._tok_tree.delete(row)
         for row in self._sym_tree.get_children(): self._sym_tree.delete(row)
+        for row in self._tac_tree_orig.get_children(): self._tac_tree_orig.delete(row)
+        for row in self._tac_tree_opt.get_children():  self._tac_tree_opt.delete(row)
+        for txt in (self._tac_cmp_orig, self._tac_cmp_opt):
+            txt.configure(state="normal"); txt.delete("1.0","end"); txt.configure(state="disabled")
+        self._lbl_tac_hdr.configure(text="---")
+        self._lbl_tac_metric.configure(text="")
         self._arbol.clear()
         for w in self._sem_frame.winfo_children(): w.destroy()
         self._console.configure(state="normal"); self._console.delete("1.0","end")
@@ -1243,7 +1217,6 @@ class MiniIDE(tk.Tk):
         self._lbl_ft_sym.configure(text="Simbolos: 0")
         self._lbl_ft_err.configure(text="Errores: 0")
         self._on_key_editor()
-
 
 if __name__ == "__main__":
     app = MiniIDE()

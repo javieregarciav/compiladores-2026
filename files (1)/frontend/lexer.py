@@ -1,18 +1,6 @@
-"""
-lexer.py
---------
-Analizador Léxico para el mini-compilador.
-Implementado con el módulo estándar `re` de Python siguiendo
-el mismo diseño conceptual de PLY (ply.lex).
-"""
 
 import re
-from tabla_simbolos import TablaSimbolos
-
-
-# ======================================================================
-# 1. PALABRAS RESERVADAS
-# ======================================================================
+from .tabla_simbolos import TablaSimbolos
 
 RESERVED = {
     "int":     "INT",
@@ -36,10 +24,6 @@ RESERVED = {
 
 RESERVED_INV = {v: k for k, v in RESERVED.items()}
 
-# ======================================================================
-# 2. LISTA DE TOKENS
-# ======================================================================
-
 TOKENS = (
     "ENTERO", "DECIMAL", "CADENA", "ID",
     "MAS", "MENOS", "MULT", "DIV", "MOD",
@@ -52,26 +36,20 @@ TOKENS = (
     "LLAVE_IZQ", "LLAVE_DER",
 ) + tuple(RESERVED.values())
 
-
-# ======================================================================
-# 3. ESPECIFICACIÓN DE TOKENS
-#    (nombre, patron_regex [, funcion_conversion])
-# ======================================================================
-
 SPEC = [
     ("COMENTARIO",  r"//[^\n]*"),
     ("DECIMAL",     r"\d+\.\d+",   float),
     ("ENTERO",      r"\d+",        int),
     ("CADENA",      r'"(?:[^"\\]|\\.)*"'),
     ("ID",          r"[a-zA-Z_][a-zA-Z_0-9]*"),
-    # Operadores de dos caracteres
+
     ("IGUAL",       r"=="),
     ("DIFERENTE",   r"!="),
     ("MENOR_IGUAL", r"<="),
     ("MAYOR_IGUAL", r">="),
     ("Y_LOGICO",    r"&&"),
     ("O_LOGICO",    r"\|\|"),
-    # Operadores de un carácter
+
     ("MAS",         r"\+"),
     ("MENOS",       r"-"),
     ("MULT",        r"\*"),
@@ -81,14 +59,14 @@ SPEC = [
     ("MENOR",       r"<"),
     ("MAYOR",       r">"),
     ("ASIGNACION",  r"="),
-    # Delimitadores
+
     ("PUNTO_COMA",  r";"),
     ("COMA",        r","),
     ("PAREN_IZQ",   r"\("),
     ("PAREN_DER",   r"\)"),
     ("LLAVE_IZQ",   r"\{"),
     ("LLAVE_DER",   r"\}"),
-    # Internos
+
     ("NUEVA_LINEA", r"\n"),
     ("ESPACIO",     r"[ \t\r]+"),
 ]
@@ -100,22 +78,11 @@ _CONV = {n: c for n, _, *c in SPEC if c}
 
 _IGNORAR = frozenset({"NUEVA_LINEA", "ESPACIO", "COMENTARIO"})
 
-
-# ======================================================================
-# 4. CLASE PRINCIPAL
-# ======================================================================
-
 class Lexer:
-    """Analizador Léxico basado en expresiones regulares."""
 
     _TIPOS_DATO = frozenset({"INT", "FLOAT", "STRING", "BOOLEAN"})
 
     def analizar(self, codigo: str):
-        """
-        Tokeniza `codigo` y construye la tabla de símbolos.
-
-        Retorna (tokens_info, tabla, errores).
-        """
         tokens_info = []
         errores = []
         tabla = TablaSimbolos()
@@ -125,15 +92,13 @@ class Lexer:
         ultimo_tipo = None
         proximo_es_id = False
 
-        # Máscara de posiciones YA consumidas por un match válido
-        consumidas = bytearray(len(codigo))   # 0 = libre, 1 = consumida
+        consumidas = bytearray(len(codigo))
 
         for m in _PATRON.finditer(codigo):
             tipo = m.lastgroup
             valor = m.group()
             pos = m.start()
 
-            # Marcar todas las posiciones como consumidas
             for i in range(m.start(), m.end()):
                 consumidas[i] = 1
 
@@ -147,11 +112,9 @@ class Lexer:
 
             columna = pos - inicio_linea + 1
 
-            # Palabras reservadas vs identificador
             if tipo == "ID":
                 tipo = RESERVED.get(valor, "ID")
 
-            # Conversión de valor
             if tipo == "CADENA":
                 valor_real = (valor[1:-1]
                               .replace('\\"', '"')
@@ -170,7 +133,6 @@ class Lexer:
                 "columna": columna,
             })
 
-            # Tabla de símbolos
             if tipo in self._TIPOS_DATO:
                 ultimo_tipo = RESERVED_INV.get(tipo, tipo.lower())
                 proximo_es_id = True
@@ -181,7 +143,6 @@ class Lexer:
             else:
                 proximo_es_id = False
 
-        # Detectar caracteres ilegales (posiciones no consumidas)
         linea_err = 1
         inicio_err = 0
         for i, ch in enumerate(codigo):
@@ -198,11 +159,6 @@ class Lexer:
 
         errores.extend(tabla.obtener_errores())
         return tokens_info, tabla, errores
-
-
-# ======================================================================
-# 5. PRUEBA DIRECTA
-# ======================================================================
 
 if __name__ == "__main__":
     codigo = """\

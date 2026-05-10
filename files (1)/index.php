@@ -246,6 +246,58 @@ table.dt tbody td:first-child{font-family:var(--disp);font-size:8.5px;letter-spa
 .sem-stat-label{font-family:var(--disp);font-size:7px;letter-spacing:1.5px;
   text-transform:uppercase;color:var(--t3);margin-top:2px;display:block}
 
+/* ================================================================ INTERMEDIATE (TAC) */
+.ir-toolbar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg2);
+  border-bottom:1px solid var(--bd1);flex-shrink:0;flex-wrap:wrap}
+.ir-sub{font-family:var(--disp);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
+  padding:5px 12px;background:transparent;border:1px solid var(--bd2);border-radius:3px;
+  color:var(--t3);cursor:pointer;transition:all .15s}
+.ir-sub:hover{color:var(--t1);border-color:var(--bd3);background:rgba(0,245,255,.04)}
+.ir-sub.active{color:var(--cyan);border-color:var(--cyan);background:rgba(0,245,255,.08);
+  box-shadow:0 0 8px rgba(0,245,255,.2)}
+.ir-stats{margin-left:auto;font-family:var(--disp);font-size:8.5px;letter-spacing:1px;
+  color:var(--t2);padding-right:6px}
+.ir-stats b.cyan{color:var(--cyan)}.ir-stats b.green{color:var(--green)}
+.ir-stats b.amber{color:var(--amber)}
+.ir-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:8px;color:var(--t4);font-family:var(--disp);font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;background:var(--bg1)}
+.ir-view{flex:1;background:var(--bg1);overflow:auto}
+.ir-view table.dt tbody td{font-size:11px;color:var(--t1);max-width:none}
+.ir-view table.dt tbody td.ir-n{color:var(--t3);text-align:right;font-family:var(--disp);font-size:9px}
+.ir-view table.dt tbody td.ir-lbl{color:var(--purple);font-family:var(--disp);font-size:9.5px}
+.ir-view table.dt tbody td.ir-instr{color:var(--cyan);text-shadow:0 0 6px rgba(0,245,255,.15)}
+.ir-view table.dt tbody td.ir-op{color:var(--amber);text-align:center;font-family:var(--disp);font-size:10px}
+.ir-view table.dt tbody td.ir-arg{color:var(--t2)}
+.ir-view table.dt tbody td.ir-dest{color:var(--green)}
+.ir-cmp-grid{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;border-bottom:1px solid var(--bd2)}
+.ir-cmp-col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bd1)}
+.ir-cmp-col:last-child{border-right:none}
+.ir-cmp-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:6px 12px;font-family:var(--disp);font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;background:var(--bg2);border-bottom:1px solid var(--bd1);flex-shrink:0}
+.ir-cmp-tag{font-size:8px;color:var(--t3);background:var(--bg3);
+  padding:2px 8px;border-radius:8px;border:1px solid var(--bd2)}
+.ir-pre{padding:10px 14px;margin:0;font-family:var(--font);font-size:11.5px;line-height:1.55;
+  color:var(--t1);white-space:pre;overflow:visible}
+.ir-traza{flex-shrink:0;border-top:1px solid var(--bd2);background:var(--bg2)}
+.ir-traza-hdr{padding:5px 12px;font-family:var(--disp);font-size:8px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--purple);border-bottom:1px solid var(--bd1)}
+.ir-info{padding:14px 22px;color:var(--t2);font-size:12px;line-height:1.65;max-width:880px}
+.ir-info h3{font-family:var(--disp);font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--cyan);text-shadow:var(--cglow);margin:18px 0 8px;
+  border-bottom:1px solid rgba(0,245,255,.18);padding-bottom:5px}
+.ir-info h3:first-child{margin-top:4px}
+.ir-info p{margin:6px 0}
+.ir-info b{color:var(--t1)}
+.ir-info code{font-family:var(--font);font-size:11.5px;color:var(--amber);
+  background:rgba(255,183,0,.06);padding:1px 5px;border-radius:2px}
+.ir-info ul,.ir-info ol{margin:6px 0 10px 22px}
+.ir-info li{margin:3px 0}
+.ir-info-pre{font-family:var(--font);font-size:11px;line-height:1.55;color:var(--t1);
+  background:var(--bg2);border:1px solid var(--bd1);border-radius:3px;
+  padding:10px 14px;margin:6px 0 10px;white-space:pre;overflow-x:auto}
+
 /* ================================================================ EMPTY STATE */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
   height:100%;gap:8px;color:var(--t4);font-family:var(--disp);font-size:9px;
@@ -416,6 +468,7 @@ footer{animation:fup .4s ease .3s both}
         <button class="tab-btn" onclick="switchTab('tokens')" id="tab-tokens">◆ Tokens <span class="tab-badge" id="badge-tokens">0</span></button>
         <button class="tab-btn" onclick="switchTab('tree')" id="tab-tree">⬡ Árbol Sint. <span class="tab-badge" id="badge-tree">!</span></button>
         <button class="tab-btn" onclick="switchTab('semantic')" id="tab-semantic">⚑ Semántico <span class="tab-badge" id="badge-sem">!</span></button>
+        <button class="tab-btn" onclick="switchTab('intermediate')" id="tab-intermediate">▦ Intermedio <span class="tab-badge" id="badge-ir">0</span></button>
         <button class="tab-btn" onclick="switchTab('errors')" id="tab-errors">⚠ Errores <span class="tab-badge" id="badge-errors">0</span></button>
       </div>
 
@@ -501,6 +554,146 @@ footer{animation:fup .4s ease .3s both}
           <div id="sem-panel">
             <div class="tree-empty" id="sem-empty"><span style="font-size:28px;opacity:.3">⚑</span><span>Sin análisis</span></div>
             <div id="sem-content" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: CÓDIGO INTERMEDIO (TAC) -->
+      <div class="tab-content" id="view-intermediate" style="flex:1;overflow:hidden;">
+        <div class="panel" style="flex:1;border-right:none;border-bottom:none;display:flex;flex-direction:column;">
+          <div class="ph">
+            <span class="ph-title">▦ Código Intermedio · TAC (3 direcciones)</span>
+            <span class="ph-count" id="ir-count">—</span>
+          </div>
+
+          <!-- Sub-toolbar -->
+          <div class="ir-toolbar">
+            <button class="ir-sub active" data-sub="orig" onclick="switchIRSub('orig')">Sin optimizar</button>
+            <button class="ir-sub" data-sub="opt"  onclick="switchIRSub('opt')">Optimizado</button>
+            <button class="ir-sub" data-sub="cmp"  onclick="switchIRSub('cmp')">Comparación</button>
+            <button class="ir-sub" data-sub="info" onclick="switchIRSub('info')">Info</button>
+            <span class="ir-stats" id="ir-stats"></span>
+          </div>
+
+          <!-- Empty state -->
+          <div class="ir-empty" id="ir-empty">
+            <span style="font-size:32px;opacity:.2">▦</span>
+            <span>Sin análisis — presiona F5</span>
+            <span style="font-size:9px;color:var(--t3);margin-top:4px">El TAC requiere el backend Python (PHP + bridge.py)</span>
+          </div>
+
+          <!-- Sub-vista: ORIGINAL -->
+          <div class="ir-view tscroll" id="ir-view-orig" style="display:none">
+            <table class="dt" id="ir-table-orig">
+              <thead><tr><th style="width:36px">#</th><th style="width:72px">Etiqueta</th><th>Instrucción</th><th style="width:64px">Op</th><th style="width:80px">Arg1</th><th style="width:80px">Arg2</th><th style="width:80px">Dest</th></tr></thead>
+              <tbody id="ir-body-orig"></tbody>
+            </table>
+          </div>
+
+          <!-- Sub-vista: OPTIMIZADO -->
+          <div class="ir-view tscroll" id="ir-view-opt" style="display:none">
+            <table class="dt" id="ir-table-opt">
+              <thead><tr><th style="width:36px">#</th><th style="width:72px">Etiqueta</th><th>Instrucción</th><th style="width:64px">Op</th><th style="width:80px">Arg1</th><th style="width:80px">Arg2</th><th style="width:80px">Dest</th></tr></thead>
+              <tbody id="ir-body-opt"></tbody>
+            </table>
+          </div>
+
+          <!-- Sub-vista: COMPARACIÓN -->
+          <div class="ir-view" id="ir-view-cmp" style="display:none;flex-direction:column;overflow:hidden;flex:1;">
+            <div class="ir-cmp-grid">
+              <div class="ir-cmp-col">
+                <div class="ir-cmp-hdr"><span style="color:var(--cyan)">Sin optimizar</span> <span id="ir-cmp-orig-n" class="ir-cmp-tag">0</span></div>
+                <div class="tscroll" style="flex:1">
+                  <pre class="ir-pre" id="ir-pre-orig"></pre>
+                </div>
+              </div>
+              <div class="ir-cmp-col">
+                <div class="ir-cmp-hdr"><span style="color:var(--green)">Optimizado</span> <span id="ir-cmp-opt-n" class="ir-cmp-tag">0</span></div>
+                <div class="tscroll" style="flex:1">
+                  <pre class="ir-pre" id="ir-pre-opt"></pre>
+                </div>
+              </div>
+            </div>
+            <div class="ir-traza">
+              <div class="ir-traza-hdr">Traza del optimizador (pasadas hasta punto fijo)</div>
+              <div class="tscroll" style="max-height:120px">
+                <table class="dt" style="font-size:10px">
+                  <thead><tr><th style="width:50px">Iter</th><th>Pasada</th><th style="width:60px">Antes</th><th style="width:60px">Después</th><th style="width:60px">Δ</th></tr></thead>
+                  <tbody id="ir-traza-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-vista: INFO -->
+          <div class="ir-view tscroll" id="ir-view-info" style="display:none">
+            <div class="ir-info">
+<h3>CÓDIGO INTERMEDIO  =  FRONTERA FRONT-END / BACK-END</h3>
+<p>El código intermedio es la <b>frontera</b> entre el FRONT-END y el BACK-END
+de un compilador. <b>No es solo "una etapa más"</b>: es el <b>contrato</b> que
+permite separar el lenguaje fuente de la máquina destino.</p>
+<pre class="ir-info-pre">
+  FRONT-END  ───►  CÓDIGO INTERMEDIO  ───►  BACK-END
+  (lenguaje              (TAC)              (máquina
+   fuente)                                   objetivo)
+</pre>
+<p>Si cambia el lenguaje fuente solo se rehace el front-end.<br>
+Si cambia la arquitectura objetivo solo se rehace el back-end.<br>
+El IR (representación intermedia) es el único punto que ambos lados conocen.</p>
+
+<h3>Estructura de este proyecto</h3>
+<pre class="ir-info-pre">
+  frontend/                   ← depende del lenguaje fuente
+     lexer.py                  análisis léxico
+     tabla_simbolos.py         tabla de símbolos
+     parser.py                 AST (análisis sintáctico)
+     generador_intermedio.py   emite el TAC
+
+  intermedio.py               ← contrato compartido
+     Quad                      cuádruplo (op, arg1, arg2, dest)
+     formatear_tac             pretty-printer
+
+  backend/                    ← depende de la máquina objetivo
+     optimizador.py            optimiza el TAC
+     (futuro) generador_objeto.py  emite ensamblador
+</pre>
+
+<h3>Tipos de código intermedio</h3>
+<ul>
+  <li>Notación postfija &nbsp;&nbsp;&nbsp; <code>a b +</code></li>
+  <li><b>Three-Address Code (TAC)</b> &nbsp;&nbsp;&nbsp; <code>t1 = a + b</code> &nbsp;&nbsp;◄── usamos este</li>
+  <li>Cuádruplos / Triples</li>
+  <li>SSA (Static Single Assignment)</li>
+  <li>DAG (detecta subexpresiones comunes)</li>
+</ul>
+
+<h3>Cuál usa este compilador</h3>
+<p><b>Three-Address Code (TAC)</b> en formato de <b>cuádruplos</b>:
+<code>( op , arg1 , arg2 , dest )</code></p>
+<pre class="ir-info-pre">
+  a = 5             →  ( = , 5  , _ , a   )
+  $t1 = b + c       →  ( + , b  , c , $t1 )
+  if $t1 goto $L2   →  ( if_false , $t1 , _ , $L2 )
+  goto $L3          →  ( goto , _ , _ , $L3 )
+  $L2:              →  ( label , _ , _ , $L2 )
+  print x           →  ( print , x , _ , _  )
+</pre>
+<p>Los temporales y etiquetas usan prefijo <code>$</code> que el lexer no acepta
+como identificador, así nunca chocan con variables del usuario llamadas
+<code>t1</code> o <code>L1</code>.</p>
+
+<h3>Optimizaciones (back-end)</h3>
+<p>El optimizador ejecuta varias pasadas hasta <b>punto fijo</b>:</p>
+<ol>
+  <li><b>Constant Folding</b> &nbsp; <code>3 + 4 → 7</code></li>
+  <li><b>Algebraic Simplification</b> &nbsp; <code>x * 1 → x</code> · <code>x + 0 → x</code></li>
+  <li><b>Constant Propagation</b> &nbsp; <code>x = 5; t = x + 1 → t = 5 + 1</code></li>
+  <li><b>Copy Propagation</b> &nbsp; <code>a = b; c = a + 1 → c = b + 1</code></li>
+  <li><b>Dead-Code Elimination</b> &nbsp; elimina temporales nunca leídos</li>
+  <li><b>Branch Pruning</b> &nbsp; <code>ifFalse true → elimina el salto</code></li>
+  <li><b>Jump Threading</b> &nbsp; <code>goto L; L: → elimina el goto</code></li>
+</ol>
+            </div>
           </div>
         </div>
       </div>
@@ -1465,7 +1658,7 @@ function runAnalysis(){
   document.getElementById('console').innerHTML='';
   document.getElementById('tok-body').innerHTML='';
   document.getElementById('sym-body').innerHTML='';
-  document.getElementById('tree-root').innerHTML='';
+  const _treeSvg=document.getElementById('tree-svg'); if(_treeSvg) _treeSvg.innerHTML='';
 
   const t0=performance.now();
 
@@ -1480,6 +1673,10 @@ function runAnalysis(){
   analyze.then(data=>{
     setProgress(60);
     const {tokens,simbolos,errores}=data;
+    const tac           = data.tac           || [];
+    const tacOpt        = data.tac_optimizado|| [];
+    const metr          = data.metricas      || {};
+    const traza         = data.traza_optimizacion || [];
     const ms=Math.round(performance.now()-t0);
 
     // ── TOKENS ──
@@ -1542,6 +1739,9 @@ function runAnalysis(){
     document.getElementById('sem-count').textContent=totalIssues===0?'OK':totalIssues+' aviso(s)';
     document.getElementById('badge-sem').textContent=totalIssues;
     document.getElementById('badge-sem').classList.add('show');
+
+    // ── INTERMEDIATE CODE (TAC) ──
+    renderIntermediate(tac, tacOpt, metr, traza);
 
     // ── CONSOLE ──
     const errs=errores||[];
@@ -1607,19 +1807,136 @@ document.addEventListener('localAnalysis', e=>{
 });
 
 /* ================================================================
+   INTERMEDIATE CODE (TAC) — render
+================================================================ */
+let _irCurrentSub = 'orig';
+
+function _irRowHtml(r){
+  const lbl = r.etiqueta ? `${escH(r.etiqueta)}:` : '';
+  return `<tr>
+    <td class="ir-n">${r.n}</td>
+    <td class="ir-lbl">${lbl}</td>
+    <td class="ir-instr">${escH(r.instruccion)}</td>
+    <td class="ir-op">${escH(r.op)}</td>
+    <td class="ir-arg">${escH(String(r.arg1))}</td>
+    <td class="ir-arg">${escH(String(r.arg2))}</td>
+    <td class="ir-dest">${escH(String(r.dest))}</td>
+  </tr>`;
+}
+
+function _irPretty(rows){
+  if(!rows||rows.length===0) return '(vacío)';
+  return rows.map(r=>{
+    const lbl = r.etiqueta ? `${r.etiqueta}:` : '';
+    const n = String(r.n).padStart(3,' ');
+    return `${n}: ${lbl?lbl.padEnd(8,' '):'        '}${r.instruccion}`;
+  }).join('\n');
+}
+
+function renderIntermediate(tac, tacOpt, metr, traza){
+  const hasTac = (tac && tac.length>0) || (tacOpt && tacOpt.length>0);
+
+  // Empty state
+  const empty = document.getElementById('ir-empty');
+  if(!hasTac){
+    empty.style.display='flex';
+    document.querySelectorAll('.ir-view').forEach(v=>v.style.display='none');
+    document.getElementById('ir-count').textContent='—';
+    document.getElementById('ir-stats').innerHTML='';
+    document.getElementById('badge-ir').textContent='0';
+    document.getElementById('badge-ir').classList.remove('show');
+    return;
+  }
+  empty.style.display='none';
+
+  // Tablas
+  document.getElementById('ir-body-orig').innerHTML = tac.map(_irRowHtml).join('');
+  document.getElementById('ir-body-opt').innerHTML  = tacOpt.map(_irRowHtml).join('');
+
+  // Comparación: pre + tags + traza
+  document.getElementById('ir-pre-orig').textContent = _irPretty(tac);
+  document.getElementById('ir-pre-opt').textContent  = _irPretty(tacOpt);
+  document.getElementById('ir-cmp-orig-n').textContent = `${tac.length} cuádruplos`;
+  document.getElementById('ir-cmp-opt-n').textContent  = `${tacOpt.length} cuádruplos`;
+
+  document.getElementById('ir-traza-body').innerHTML = (traza||[]).map(t=>{
+    const delta = t.delta;
+    const dColor = delta<0 ? 'var(--green)' : (delta>0 ? 'var(--red)' : 'var(--t3)');
+    const dStr = delta>0 ? `+${delta}` : String(delta);
+    return `<tr>
+      <td style="color:var(--cyan);text-align:center">${t.iter}</td>
+      <td style="color:var(--t1)">${escH(t.pasada)}</td>
+      <td style="color:var(--t2);text-align:center">${t.antes}</td>
+      <td style="color:var(--t2);text-align:center">${t.despues}</td>
+      <td style="color:${dColor};text-align:center">${dStr}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:8px">El optimizador no realizó ningún cambio</td></tr>`;
+
+  // Métricas y badges
+  const co = metr.cuad_orig ?? tac.length;
+  const cp = metr.cuad_opt  ?? tacOpt.length;
+  const to = metr.temps_orig ?? 0;
+  const tp = metr.temps_opt  ?? 0;
+  const red = metr.reduccion_pct ?? 0;
+  document.getElementById('ir-count').textContent = `${co} → ${cp} cuádruplos`;
+  document.getElementById('ir-stats').innerHTML =
+    `Cuádruplos: <b class="cyan">${co}</b> → <b class="green">${cp}</b> &nbsp;·&nbsp; ` +
+    `Reducción: <b class="amber">${red}%</b> &nbsp;·&nbsp; ` +
+    `Temporales: <b class="cyan">${to}</b> → <b class="green">${tp}</b>`;
+  document.getElementById('badge-ir').textContent = co;
+  document.getElementById('badge-ir').classList.add('show');
+
+  // Mostrar la sub-vista activa
+  switchIRSub(_irCurrentSub);
+}
+
+function switchIRSub(sub){
+  _irCurrentSub = sub;
+  document.querySelectorAll('.ir-sub').forEach(b=>{
+    b.classList.toggle('active', b.dataset.sub===sub);
+  });
+  // Si no hay datos cargados todavía, no mostramos nada (sigue el empty state)
+  if(document.getElementById('ir-empty').style.display==='flex') return;
+  document.querySelectorAll('.ir-view').forEach(v=>v.style.display='none');
+  const map = {orig:'ir-view-orig', opt:'ir-view-opt', cmp:'ir-view-cmp', info:'ir-view-info'};
+  const target = document.getElementById(map[sub] || map.orig);
+  if(target){
+    target.style.display = (sub==='cmp') ? 'flex' : 'block';
+  }
+}
+
+// Info siempre disponible (incluso sin análisis). Mostrarla si el usuario hace click en Info sin haber analizado.
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelector('.ir-sub[data-sub="info"]').addEventListener('click', ()=>{
+    document.getElementById('ir-empty').style.display='none';
+    document.querySelectorAll('.ir-view').forEach(v=>v.style.display='none');
+    document.getElementById('ir-view-info').style.display='block';
+  });
+});
+
+/* ================================================================
    CLEAR ALL
 ================================================================ */
 function clearAll(){
   ed.value='';syncEditor();
-  ['tok-body','sym-body','console'].forEach(id=>document.getElementById(id).innerHTML='');
+  ['tok-body','sym-body','console','ir-body-orig','ir-body-opt','ir-traza-body'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.innerHTML='';
+  });
   document.getElementById('tree-svg').innerHTML='';
   document.getElementById('tree-canvas-wrap').style.display='none';
   document.getElementById('tree-legend').style.display='none';
-  ['tok-empty','sym-empty','tree-empty','sem-empty'].forEach(id=>document.getElementById(id).style.display='');
+  ['tok-empty','sym-empty','tree-empty','sem-empty','ir-empty'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='';
+  });
   document.getElementById('tok-table').style.display='none';
   document.getElementById('sym-table').style.display='none';
   document.getElementById('sem-content').style.display='none';
-  ['tok-count','sym-count','err-count','tree-count','sem-count'].forEach(id=>document.getElementById(id).textContent='—');
+  document.querySelectorAll('.ir-view').forEach(v=>v.style.display='none');
+  ['ir-pre-orig','ir-pre-opt'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
+  const irStats=document.getElementById('ir-stats'); if(irStats) irStats.innerHTML='';
+  ['tok-count','sym-count','err-count','tree-count','sem-count','ir-count'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='—';
+  });
   ['sb-tok','sb-sym','ft-tok','ft-sym','ft-err','stat-tokens','stat-syms','stat-lines','stat-errs'].forEach(id=>document.getElementById(id).textContent='0');
   document.getElementById('hdr-status').textContent='Sistema listo';
   clog('info','Editor limpiado. Listo para nuevo análisis.');

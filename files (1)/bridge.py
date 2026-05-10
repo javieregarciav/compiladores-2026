@@ -1,48 +1,54 @@
-#!/usr/bin/env python3
-"""
-bridge.py
----------
-Script puente entre analizar.php y el motor léxico Python.
-
-Uso (llamado por PHP):
-    python3 bridge.py <ruta_archivo_temporal>
-
-Lee el código fuente del archivo recibido como argumento,
-ejecuta el lexer y la tabla de símbolos, y escribe el resultado
-como JSON en stdout para que PHP lo capture con exec().
-"""
 
 import sys
 import os
 import json
 
-# Añadir el directorio del script al path para importar lexer y tabla_simbolos
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from lexer import Lexer
+    from frontend import Lexer, build_tree, GeneradorTAC
+    from intermedio import formatear_tac
+    from backend import optimizar
 except ImportError as e:
     print(json.dumps({
         "tokens":   [],
         "simbolos": [],
-        "errores":  [f"Error de importación: {e}. Verifica que lexer.py esté en la misma carpeta."],
+        "errores":  [f"Error de importación: {e}. Verifica que las carpetas frontend/ y backend/ estén junto a bridge.py."],
+        "tac": [],
+        "tac_optimizado": [],
+        "metricas": {},
+        "traza_optimizacion": [],
     }, ensure_ascii=False))
     sys.exit(0)
 
 
+def _contar_temps(quads):
+    temps = set()
+    for q in quads:
+        for x in (q.arg1, q.arg2, q.dest):
+            if isinstance(x, str) and x.startswith("$t") and x[2:].isdigit():
+                temps.add(x)
+    return len(temps)
+
+
 def main():
-    # ── Verificar argumento ────────────────────────────────────────
     if len(sys.argv) < 2:
         print(json.dumps({
             "tokens":   [],
             "simbolos": [],
             "errores":  ["bridge.py requiere la ruta del archivo fuente como argumento."],
+            "tac": [],
+            "tac_optimizado": [],
+            "metricas": {},
+            "traza_optimizacion": [],
         }, ensure_ascii=False))
         sys.exit(1)
 
     ruta = sys.argv[1]
 
-    # ── Leer el código fuente ──────────────────────────────────────
     try:
         with open(ruta, "r", encoding="utf-8") as f:
             codigo = f.read()
@@ -51,10 +57,14 @@ def main():
             "tokens":   [],
             "simbolos": [],
             "errores":  [f"No se pudo leer el archivo temporal: {e}"],
+            "tac": [],
+            "tac_optimizado": [],
+            "metricas": {},
+            "traza_optimizacion": [],
         }, ensure_ascii=False))
         sys.exit(1)
 
-    # ── Ejecutar el lexer ──────────────────────────────────────────
+    # ── FRONT-END: análisis léxico + tabla de símbolos ──
     try:
         lexer = Lexer()
         tokens_info, tabla, errores = lexer.analizar(codigo)
@@ -63,10 +73,13 @@ def main():
             "tokens":   [],
             "simbolos": [],
             "errores":  [f"Error interno del lexer: {e}"],
+            "tac": [],
+            "tac_optimizado": [],
+            "metricas": {},
+            "traza_optimizacion": [],
         }, ensure_ascii=False))
         sys.exit(0)
 
-    # ── Serializar tabla de símbolos ───────────────────────────────
     simbolos_json = []
     for sim in tabla.todos_los_simbolos():
         simbolos_json.append({
@@ -76,11 +89,50 @@ def main():
             "valor":  str(sim.valor) if sim.valor is not None else "—",
         })
 
-    # ── Salida JSON ────────────────────────────────────────────────
+    # ── FRONT-END: parser → AST → generador de código intermedio (TAC) ──
+    tac_filas = []
+    tac_opt_filas = []
+    metricas = {}
+    traza = []
+
+    try:
+        ast = build_tree(tokens_info)
+        quads = GeneradorTAC().generar(ast)
+        tac_filas = formatear_tac(quads)
+
+        # ── BACK-END: optimizador sobre el TAC ──
+        quads_opt, traza = optimizar(quads)
+        tac_opt_filas = formatear_tac(quads_opt)
+
+        cuad_orig = len(quads)
+        cuad_opt = len(quads_opt)
+        temps_orig = _contar_temps(quads)
+        temps_opt = _contar_temps(quads_opt)
+        reduccion_pct = (
+            round(100.0 * (cuad_orig - cuad_opt) / cuad_orig, 1)
+            if cuad_orig else 0.0
+        )
+
+        metricas = {
+            "cuad_orig":      cuad_orig,
+            "cuad_opt":       cuad_opt,
+            "reduccion_pct":  reduccion_pct,
+            "temps_orig":     temps_orig,
+            "temps_opt":      temps_opt,
+        }
+    except Exception as e:
+        # No abortamos el análisis: mostramos lo que sí se pudo construir
+        # y registramos el error para que se vea en la consola del frontend.
+        errores = list(errores) + [f"Error generando código intermedio: {e}"]
+
     resultado = {
-        "tokens":   tokens_info,   # lista de {tipo, valor, linea, columna}
-        "simbolos": simbolos_json, # lista de {nombre, tipo, linea, valor}
-        "errores":  errores,       # lista de strings
+        "tokens":               tokens_info,
+        "simbolos":             simbolos_json,
+        "errores":              errores,
+        "tac":                  tac_filas,
+        "tac_optimizado":       tac_opt_filas,
+        "metricas":             metricas,
+        "traza_optimizacion":   traza,
     }
 
     print(json.dumps(resultado, ensure_ascii=False))
