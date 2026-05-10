@@ -6,6 +6,7 @@ _BIN_TIPOS = {
     "MENOR": "<", "MAYOR": ">",
     "MENOR_IGUAL": "<=", "MAYOR_IGUAL": ">=",
     "Y_LOGICO": "&&", "O_LOGICO": "||",
+    "AND": "&&", "OR": "||",
 }
 
 class GeneradorTAC:
@@ -108,8 +109,12 @@ class GeneradorTAC:
         self.emit("label", None, None, L_fin)
 
     def _g_Print(self, node):
-        arg = self._g_expr(node.get("arg"))
-        self.emit("print", arg, None, None)
+        args = node.get("args")
+        if args:
+            for a in args:
+                self.emit("print", self._g_expr(a), None, None)
+        elif node.get("arg") is not None:
+            self.emit("print", self._g_expr(node["arg"]), None, None)
 
     def _g_Call(self, node):
         ids = []
@@ -138,6 +143,8 @@ class GeneradorTAC:
             return f"\"{v}\""
         if t == "BoolLit":
             return str(node["token"]["valor"])
+        if t == "NullLit":
+            return "null"
         if t == "Identifier":
             return node["token"]["valor"]
         if t == "Group":
@@ -146,10 +153,14 @@ class GeneradorTAC:
             return self._g_Call(node)
         if t == "UnaryOp":
             operand = self._g_expr(node["operand"])
-            tmp = self._nuevo_temp()
             op_val = node["op"]["valor"]
+            if op_val == "+":
+                return operand
+            tmp = self._nuevo_temp()
             if op_val == "-":
                 self.emit("-", "0", operand, tmp)
+            elif op_val == "not":
+                self.emit("!", operand, None, tmp)
             else:
                 self.emit(op_val, operand, None, tmp)
             return tmp

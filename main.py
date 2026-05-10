@@ -56,6 +56,7 @@ NODE_COLORS = {
     "Literal":    ("#1a1a3a","#4a4aaa"),
     "StringLit":  ("#0a1a0a","#2a6a2a"),
     "BoolLit":    ("#1a1a3a","#6a4aaa"),
+    "NullLit":    ("#1a1a3a","#6a4aaa"),
     "Identifier": ("#1a2a2a","#3a6a6a"),
     "Token":      ("#1a1a2a","#3a3a6a"),
     "Keyword":    ("#2a1a0a","#6a4a1a"),
@@ -65,7 +66,7 @@ NODE_ICONS = {
     "Assignment":"<","If":"?","While":"R","For":"@",
     "Print":">","Call":"()","BinaryOp":"+",
     "UnaryOp":"!","Group":"()","Literal":"#",
-    "StringLit":'"',"BoolLit":"B","Identifier":"$","Token":"T","Keyword":"K",
+    "StringLit":'"',"BoolLit":"B","NullLit":"N","Identifier":"$","Token":"T","Keyword":"K",
 }
 
 _TEXTO_INFO_TAC = """\
@@ -1016,13 +1017,16 @@ class MiniIDE(tk.Tk):
         self._lbl_tree_hdr.configure(text="arbol construido")
         self._build_semantic_panel(tokens, simbolos, errores)
 
-        try:
-            quads = GeneradorTAC().generar(ast)
-            quads_opt, _traza = optimizar(quads)
-            self._populate_tac(quads, quads_opt)
-        except Exception as ex:
-            self._log("error", f"Error generando codigo intermedio: {ex}")
+        if errores:
             self._populate_tac([], [])
+        else:
+            try:
+                quads = GeneradorTAC().generar(ast)
+                quads_opt, _traza = optimizar(quads)
+                self._populate_tac(quads, quads_opt)
+            except Exception as ex:
+                self._log("error", f"Error generando codigo intermedio: {ex}")
+                self._populate_tac([], [])
 
         self._console.configure(state="normal"); self._console.delete("1.0","end")
         if errores:

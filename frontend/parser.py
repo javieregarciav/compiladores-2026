@@ -36,15 +36,14 @@ def build_tree(tokens, errors=None):
     def parse_program():
         stmts = []
         while pos[0] < len(toks):
+            antes = pos[0]
             s = parse_stmt()
             if s:
                 stmts.append(s)
-            else:
-                # Skip invalid token
-                if pos[0] < len(toks):
-                    t = peek()
-                    errors.append(f"[Línea {t['linea']}, Col {t['columna']}] Token inesperado: '{t['tipo']}'")
-                    pos[0] += 1
+            elif pos[0] == antes:
+                t = peek()
+                errors.append(f"[Línea {t['linea']}, Col {t['columna']}] Token inesperado: '{t['tipo']}'")
+                pos[0] += 1
         return {"type": "Program", "children": stmts}
 
     def parse_stmt():
@@ -131,10 +130,15 @@ def build_tree(tokens, errors=None):
     def parse_print():
         kw = consume()
         expect("PAREN_IZQ")
-        arg = parse_expr()
+        args = []
+        if peek() and peek()["tipo"] != "PAREN_DER":
+            args.append(parse_expr())
+            while peek() and peek()["tipo"] == "COMA":
+                consume()
+                args.append(parse_expr())
         expect("PAREN_DER")
         expect("PUNTO_COMA")
-        return {"type": "Print", "kw": kw, "arg": arg}
+        return {"type": "Print", "kw": kw, "args": args, "arg": args[0] if args else None}
 
     def parse_block():
         if peek() and peek()["tipo"] == "LLAVE_IZQ":
@@ -154,7 +158,7 @@ def build_tree(tokens, errors=None):
 
     def parse_or():
         l = parse_and()
-        while peek() and peek()["tipo"] == "O_LOGICO":
+        while peek() and peek()["tipo"] in ("O_LOGICO", "OR"):
             op = consume()
             r = parse_and()
             l = {"type": "BinaryOp", "op": op, "left": l, "right": r}
@@ -162,7 +166,7 @@ def build_tree(tokens, errors=None):
 
     def parse_and():
         l = parse_eq()
-        while peek() and peek()["tipo"] == "Y_LOGICO":
+        while peek() and peek()["tipo"] in ("Y_LOGICO", "AND"):
             op = consume()
             r = parse_eq()
             l = {"type": "BinaryOp", "op": op, "left": l, "right": r}
@@ -201,7 +205,7 @@ def build_tree(tokens, errors=None):
         return l
 
     def parse_unary():
-        if peek() and peek()["tipo"] in ("NO_LOGICO", "MENOS"):
+        if peek() and peek()["tipo"] in ("NO_LOGICO", "NOT", "MENOS", "MAS"):
             op = consume()
             operand = parse_unary()
             return {"type": "UnaryOp", "op": op, "operand": operand}
@@ -220,8 +224,10 @@ def build_tree(tokens, errors=None):
             return {"type": "Literal", "token": consume()}
         if t["tipo"] == "CADENA":
             return {"type": "StringLit", "token": consume()}
-        if t["tipo"] in ("TRUE", "FALSE", "NULL"):
+        if t["tipo"] in ("TRUE", "FALSE"):
             return {"type": "BoolLit", "token": consume()}
+        if t["tipo"] == "NULL":
+            return {"type": "NullLit", "token": consume()}
         if t["tipo"] == "ID":
             id_ = consume()
             if peek() and peek()["tipo"] == "PAREN_IZQ":
@@ -298,6 +304,9 @@ def get_kids(node):
             c.append(node["body"])
         return c
     if t == "Print":
+        args = node.get("args")
+        if args:
+            return [{**a, "_label": f"arg{i+1}"} for i, a in enumerate(args) if a]
         return [{**node["arg"], "_label": "arg"}] if node.get("arg") else []
     if t == "Call":
         return [a for a in node.get("args", []) if a]
@@ -351,6 +360,15 @@ def node_label(node):
         return '"' + val[:10] + ("..." if len(val) > 10 else "") + '"'
     return val[:14] if val else t
 
+def _tipo_compatible(declarado, expresion):
+    if declarado == expresion:
+        return True
+    if declarado == "float" and expresion == "int":
+        return True
+    if declarado in ("string",) and expresion == "null":
+        return True
+    return False
+
 def check_semantic(ast, tabla, errors):
     RESERVED_INV = {v: k for k, v in RESERVED.items()}
     def get_type(node):
@@ -371,6 +389,8 @@ def check_semantic(ast, tabla, errors):
             return "string"
         elif t == "BoolLit":
             return "boolean"
+        elif t == "NullLit":
+            return "null"
         elif t == "Identifier":
             tok = node["token"]
             sym = tabla.buscar(tok["valor"])
@@ -383,8 +403,14 @@ def check_semantic(ast, tabla, errors):
             right_type = get_type(node["right"])
             op = node["op"]["tipo"]
             if op in ("DIV", "MOD"):
-                if node["right"].get("type") == "Literal" and node["right"]["token"]["valor"] == "0":
-                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] División por cero")
+                rnode = node["right"]
+                if rnode.get("type") == "Literal":
+                    rval = rnode["token"]["valor"]
+                    try:
+                        if float(rval) == 0:
+                            errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] División por cero")
+                    except (ValueError, TypeError):
+                        pass
             if op in ("MAS", "MENOS", "MULT", "DIV", "MOD"):
                 if left_type == "int" and right_type == "int":
                     return "int"
@@ -398,10 +424,12 @@ def check_semantic(ast, tabla, errors):
                     return "boolean"
                 elif left_type == "string" and right_type == "string" and op in ("IGUAL", "DIFERENTE"):
                     return "boolean"
+                elif left_type == "boolean" and right_type == "boolean" and op in ("IGUAL", "DIFERENTE"):
+                    return "boolean"
                 else:
                     errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Comparación incompatible entre '{left_type}' y '{right_type}'")
                     return None
-            elif op in ("Y_LOGICO", "O_LOGICO"):
+            elif op in ("Y_LOGICO", "O_LOGICO", "AND", "OR"):
                 if left_type == "boolean" and right_type == "boolean":
                     return "boolean"
                 else:
@@ -410,22 +438,24 @@ def check_semantic(ast, tabla, errors):
         elif t == "UnaryOp":
             operand_type = get_type(node["operand"])
             op = node["op"]["tipo"]
-            if op == "MENOS":
+            if op in ("MENOS", "MAS"):
                 if operand_type in ("int", "float"):
                     return operand_type
                 else:
-                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operador unario '-' incompatible con '{operand_type}'")
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operador unario '{node['op']['valor']}' incompatible con '{operand_type}'")
                     return None
-            elif op == "NO_LOGICO":
+            elif op in ("NO_LOGICO", "NOT"):
                 if operand_type == "boolean":
                     return "boolean"
                 else:
-                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operador '!' incompatible con '{operand_type}'")
+                    errors.append(f"[Línea {node['op']['linea']}, Col {node['op']['columna']}] Operador '{node['op']['valor']}' incompatible con '{operand_type}'")
                     return None
         elif t == "Group":
             return get_type(node["expr"])
         elif t == "Call":
             id_tok = node["id"]
+            for arg in node.get("args", []):
+                get_type(arg)
             if id_tok["valor"] in ("print", "input"):
                 return None
             else:
@@ -439,24 +469,26 @@ def check_semantic(ast, tabla, errors):
         t = node.get("type", "")
         if t == "Declaration":
             dt_tok = node["dataType"]
-            id_tok = node["id"]
             expr = node["expr"]
             if expr:
                 expr_type = get_type(expr)
                 var_type = RESERVED_INV.get(dt_tok["tipo"], dt_tok["tipo"].lower())
-                if expr_type and expr_type != var_type:
+                if expr_type and not _tipo_compatible(var_type, expr_type):
                     errors.append(f"[Línea {dt_tok['linea']}, Col {dt_tok['columna']}] Asignación incompatible: '{var_type}' no puede asignar '{expr_type}'")
         elif t == "Assignment":
             id_tok = node["id"]
             expr = node["expr"]
             sym = tabla.buscar(id_tok["valor"])
-            if sym:
+            if not sym:
+                errors.append(f"[Línea {id_tok['linea']}, Col {id_tok['columna']}] Variable '{id_tok['valor']}' no declarada")
+                get_type(expr)
+            else:
                 expr_type = get_type(expr)
-                if expr_type and expr_type != sym.tipo:
+                if expr_type and not _tipo_compatible(sym.tipo, expr_type):
                     errors.append(f"[Línea {id_tok['linea']}, Col {id_tok['columna']}] Asignación incompatible: '{sym.tipo}' no puede asignar '{expr_type}'")
         elif t == "Print":
-            arg = node["arg"]
-            get_type(arg)
+            for a in node.get("args", []):
+                get_type(a)
         elif t == "If":
             cond = node["cond"]
             cond_type = get_type(cond)
@@ -472,6 +504,23 @@ def check_semantic(ast, tabla, errors):
                 errors.append(f"[Línea {node['kw']['linea']}, Col {node['kw']['columna']}] Condición 'while' debe ser booleana, no '{cond_type}'")
             check_node(node["body"])
         elif t == "For":
+            check_node(node.get("init"))
+            cond = node.get("cond")
+            if cond:
+                cond_type = get_type(cond)
+                if cond_type and cond_type != "boolean":
+                    errors.append(f"[Línea {node['kw']['linea']}, Col {node['kw']['columna']}] Condición 'for' debe ser booleana, no '{cond_type}'")
+            upd_id = node.get("updId")
+            upd_expr = node.get("updExpr")
+            if upd_id and upd_expr is not None:
+                sym = tabla.buscar(upd_id["valor"])
+                if not sym:
+                    errors.append(f"[Línea {upd_id['linea']}, Col {upd_id['columna']}] Variable '{upd_id['valor']}' no declarada")
+                    get_type(upd_expr)
+                else:
+                    upd_type = get_type(upd_expr)
+                    if upd_type and not _tipo_compatible(sym.tipo, upd_type):
+                        errors.append(f"[Línea {upd_id['linea']}, Col {upd_id['columna']}] Asignación incompatible: '{sym.tipo}' no puede asignar '{upd_type}'")
             check_node(node["body"])
         elif t == "Block":
             for s in node.get("stmts", []):

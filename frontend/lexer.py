@@ -134,6 +134,12 @@ class Lexer:
                 "longitud": m.end() - m.start(),
             })
 
+            if tipo == "CADENA":
+                saltos = valor.count("\n")
+                if saltos:
+                    linea_actual += saltos
+                    inicio_linea = m.start() + valor.rfind("\n") + 1
+
             if tipo in self._TIPOS_DATO:
                 ultimo_tipo = RESERVED_INV.get(tipo, tipo.lower())
                 proximo_es_id = True
