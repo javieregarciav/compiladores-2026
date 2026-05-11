@@ -28,6 +28,7 @@ class TablaSimbolos:
 
     def __init__(self):
         self._ambitos: list[dict[str, Simbolo]] = [{}]
+        self._historico: list[Simbolo] = []
         self._errores: list = []
 
     def entrar_ambito(self):
@@ -49,7 +50,9 @@ class TablaSimbolos:
                 linea, columna, valor=nombre,
             )
             return False
-        ambito[nombre] = Simbolo(nombre, tipo, linea, valor)
+        sim = Simbolo(nombre, tipo, linea, valor)
+        ambito[nombre] = sim
+        self._historico.append(sim)
         return True
 
     def buscar(self, nombre):
@@ -66,6 +69,11 @@ class TablaSimbolos:
         return False
 
     def todos_los_simbolos(self):
+        # Si check_semantic ya corrio, usamos el historico (sobrevive el
+        # cierre de ambitos). Si nadie inserto via AST, caemos al snapshot
+        # de los ambitos actuales (compat con consumidores antiguos).
+        if self._historico:
+            return list(self._historico)
         resultado = []
         for ambito in self._ambitos:
             resultado.extend(ambito.values())
@@ -77,6 +85,7 @@ class TablaSimbolos:
 
     def limpiar(self):
         self._ambitos = [{}]
+        self._historico = []
         self._errores = []
 
     def __str__(self):

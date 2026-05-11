@@ -1026,6 +1026,12 @@ class MiniIDE(tk.Tk):
                 tags=("par" if i%2==0 else "impar",))
         self._lbl_tok_hdr.configure(text=f"{len(tokens)} tokens")
 
+        ast = build_tree(tokens, errores); self._arbol.draw(ast)
+        check_semantic(ast, tabla, errores)
+        self._lbl_tree_hdr.configure(text="arbol construido")
+
+        # La tabla se llena en check_semantic (scopes reales), recien aca
+        # tenemos la lista de simbolos para pintar el panel.
         for row in self._sym_tree.get_children(): self._sym_tree.delete(row)
         simbolos = tabla.todos_los_simbolos()
         for i,sim in enumerate(simbolos):
@@ -1033,10 +1039,6 @@ class MiniIDE(tk.Tk):
                 values=(sim.nombre,sim.tipo,sim.linea,str(sim.valor) if sim.valor is not None else "---"),
                 tags=("par" if i%2==0 else "impar",))
         self._lbl_sym_count.configure(text=f"{len(simbolos)} simbolos")
-
-        ast = build_tree(tokens, errores); self._arbol.draw(ast)
-        check_semantic(ast, tabla, errores)
-        self._lbl_tree_hdr.configure(text="arbol construido")
         self._build_semantic_panel(tokens, simbolos, errores)
 
         quads = []

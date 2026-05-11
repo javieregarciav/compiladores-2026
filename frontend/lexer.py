@@ -178,9 +178,10 @@ class Lexer:
         tabla = TablaSimbolos()
         tokens_info = []
 
-        ultimo_tipo = None
-        proximo_es_id = False
-
+        # Nota: la tabla de simbolos se llena en check_semantic via AST,
+        # respetando ambitos (si/sino/mientras/para/bloque). Antes se hacia
+        # aca con una state machine a nivel de tokens que no entendia scopes
+        # y se rompia con parametros de funciones / declaraciones anidadas.
         while True:
             t = _lexer_global.token()
             if not t:
@@ -195,16 +196,6 @@ class Lexer:
                 'columna': columna,
                 'longitud': longitud,
             })
-            # State machine para declaraciones: tipo seguido de identificador
-            if t.type in _TIPOS_DATO_TOKEN:
-                ultimo_tipo = _TIPO_AMIGABLE[t.type]
-                proximo_es_id = True
-            elif t.type == 'IDENTIFICADOR' and proximo_es_id and ultimo_tipo:
-                tabla.insertar(t.value, ultimo_tipo, t.lineno)
-                proximo_es_id = False
-                ultimo_tipo = None
-            else:
-                proximo_es_id = False
 
         # Devolver lista combinada de errores (lexicos + semanticos de tabla)
         errores = _errores_mod.todos()
@@ -217,4 +208,4 @@ def get_ply_lexer():
 
 
 def limpiar_errores_lexicos():
-    lista_errores.clear()
+    _errores_mod.errores_lexicos.clear()

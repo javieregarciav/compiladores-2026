@@ -84,23 +84,24 @@ def main():
         }, ensure_ascii=False))
         sys.exit(0)
 
-    simbolos_json = []
-    for sim in tabla.todos_los_simbolos():
-        simbolos_json.append({
-            "nombre": sim.nombre,
-            "tipo":   sim.tipo,
-            "linea":  sim.linea,
-            "valor":  str(sim.valor) if sim.valor is not None else "—",
-        })
-
     tac_filas = []
     tac_opt_filas = []
     metricas = {}
     traza = []
+    simbolos_json = []
 
     try:
         ast = build_tree(tokens_info, errores)
         check_semantic(ast, tabla, errores)
+        # La tabla se llena en check_semantic (con scopes correctos),
+        # asi que recien aca podemos recolectar los simbolos.
+        for sim in tabla.todos_los_simbolos():
+            simbolos_json.append({
+                "nombre": sim.nombre,
+                "tipo":   sim.tipo,
+                "linea":  sim.linea,
+                "valor":  str(sim.valor) if sim.valor is not None else "—",
+            })
         # Si hay errores, no generar TAC para no producir instrucciones invalidas
         quads = []
         quads_opt = []

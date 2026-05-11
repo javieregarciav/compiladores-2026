@@ -540,9 +540,42 @@ def check_semantic(ast, tabla, errors=None):
 
     Si el caller pasa `errors`, lo actualiza in-place al final con
     todos los errores acumulados (lex + sint + sem) ordenados.
+
+    La tabla de simbolos se llena AQUI (desde el AST), abriendo y
+    cerrando ambitos en cada bloque (si/sino/mientras/para/bloque).
+    Esto reemplaza la pre-carga ingenua que hacia el lexer a nivel de
+    tokens, la cual no entendia scopes.
     """
+    # Reinicio: cada ambito anidado se trackea correctamente.
+    tabla.limpiar()
     # Track de identificadores ya usados para evitar errores repetidos
     _no_decl_reportadas = set()
+
+    # Pre-scan: linea minima de declaracion por nombre (ignora scopes).
+    # Sirve unicamente para distinguir "usada antes de declarar" de
+    # "no declarada". No se usa para resolucion de simbolos (eso lo hace
+    # la tabla con scopes reales).
+    _decl_lineas: dict[str, int] = {}
+
+    def _prescan(node):
+        if not node:
+            return
+        t = node.get("type", "")
+        if t == "Declaration":
+            id_tok = node.get("id") or {}
+            nombre = id_tok.get("valor", "")
+            linea = id_tok.get("linea", node.get("dataType", {}).get("linea", 0))
+            if nombre and (nombre not in _decl_lineas or linea < _decl_lineas[nombre]):
+                _decl_lineas[nombre] = linea
+        for v in node.values():
+            if isinstance(v, dict):
+                _prescan(v)
+            elif isinstance(v, list):
+                for it in v:
+                    if isinstance(it, dict):
+                        _prescan(it)
+
+    _prescan(ast)
 
     def _sem(msg, linea, col=0, valor=""):
         _err_mod.agregar_semantico(msg, linea, col, valor=valor)
@@ -561,22 +594,21 @@ def check_semantic(ast, tabla, errors=None):
             tok = node["token"]
             sym = tabla.buscar(tok["valor"])
             if not sym:
+                # Distinguir "declarada mas adelante" de "no declarada del todo".
+                decl_linea = _decl_lineas.get(tok["valor"])
                 key = (tok["valor"], tok["linea"], tok["columna"])
                 if key not in _no_decl_reportadas:
                     _no_decl_reportadas.add(key)
-                    _sem(f"Variable '{tok['valor']}' no declarada",
-                         tok["linea"], tok["columna"], valor=tok["valor"])
+                    if decl_linea is not None and decl_linea > tok["linea"]:
+                        _sem(
+                            f"Variable '{tok['valor']}' usada antes de ser declarada "
+                            f"(declarada en linea {decl_linea})",
+                            tok["linea"], tok["columna"], valor=tok["valor"],
+                        )
+                    else:
+                        _sem(f"Variable '{tok['valor']}' no declarada",
+                             tok["linea"], tok["columna"], valor=tok["valor"])
                 return None
-            # Uso antes de declaracion (uso.linea < declaracion.linea)
-            if tok["linea"] < sym.linea:
-                key = (tok["valor"], tok["linea"], tok["columna"], "uso_antes")
-                if key not in _no_decl_reportadas:
-                    _no_decl_reportadas.add(key)
-                    _sem(
-                        f"Variable '{tok['valor']}' usada antes de ser declarada "
-                        f"(declarada en linea {sym.linea})",
-                        tok["linea"], tok["columna"], valor=tok["valor"],
-                    )
             return sym.tipo
         if t == "BinaryOp":
             lt = get_type(node["left"])
@@ -657,9 +689,18 @@ def check_semantic(ast, tabla, errors=None):
         if t == "Declaration":
             dt = node["dataType"]
             id_tok = node.get("id") or {}
+            vt = _TIPO_VAR_DE_TOKEN.get(dt["tipo"], dt["valor"])
+            # Registrar en la tabla ANTES de chequear el tipo de la expresion
+            # (asi `entero x = x + 1;` reporta correctamente uso de x).
+            nombre = id_tok.get("valor", "")
+            if nombre:
+                tabla.insertar(
+                    nombre, vt,
+                    id_tok.get("linea", dt["linea"]),
+                    columna=id_tok.get("columna", 0),
+                )
             if node.get("expr"):
                 et = get_type(node["expr"])
-                vt = _TIPO_VAR_DE_TOKEN.get(dt["tipo"], dt["valor"])
                 if et and not _tipo_compatible(vt, et):
                     _sem(
                         f"Asignacion incompatible: variable '{id_tok.get('valor','?')}' "
@@ -698,6 +739,7 @@ def check_semantic(ast, tabla, errors=None):
             if ct and ct != "booleano":
                 _sem(f"La condicion del 'si' debe ser booleana, no '{ct}'",
                      node["kw"]["linea"], node["kw"].get("columna", 0))
+            # El scope lo abre el Block que envuelve al body.
             check_node(node["body"])
             if node.get("elseBody"):
                 check_node(node["elseBody"])
@@ -714,6 +756,11 @@ def check_semantic(ast, tabla, errors=None):
                 _sem(f"La condicion del 'hacer_mientras' debe ser booleana, no '{ct}'",
                      node["kw"]["linea"], node["kw"].get("columna", 0))
         elif t == "For":
+            # El 'para' define un scope propio para que el 'init' (ej:
+            # `entero i = 0;`) viva durante init/cond/upd/body, pero NO
+            # filtre al scope exterior. El body (Block) abrira otro scope
+            # anidado encima de este.
+            tabla.entrar_ambito()
             check_node(node.get("init"))
             ct = get_type(node.get("cond"))
             if ct and ct != "booleano":
@@ -738,9 +785,16 @@ def check_semantic(ast, tabla, errors=None):
                             valor=upd_id["valor"],
                         )
             check_node(node["body"])
+            tabla.salir_ambito()
         elif t == "Block":
+            # Bloques sueltos { ... } abren scope. Los cuerpos de
+            # if/while/for ya estan envueltos por sus respectivas reglas,
+            # asi que esto solo aporta scope extra para bloques anidados
+            # standalone (poco comunes pero validos).
+            tabla.entrar_ambito()
             for s in node.get("stmts", []):
                 check_node(s)
+            tabla.salir_ambito()
         elif t == "Program":
             for c in node.get("children", []):
                 check_node(c)
