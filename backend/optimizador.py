@@ -2,12 +2,31 @@
 from copy import deepcopy
 from intermedio import Quad
 
+def _idiv_trunc(a, b):
+    """Division entera truncando hacia cero (semantica C / Java / PHP intdiv).
+
+    Python usa floor-division para `//`, que difiere de C cuando los
+    signos no coinciden: `-7 // 2 == -4`, pero C / Java / PHP devuelven `-3`.
+    El optimizador NO puede cambiar el resultado del programa.
+    """
+    q = abs(a) // abs(b)
+    return q if (a < 0) == (b < 0) else -q
+
+
+def _imod_trunc(a, b):
+    """Modulo consistente con truncated division: r = a - trunc(a/b)*b.
+
+    En C, `(-7) % 2 == -1` (signo del dividendo). Python da `1` (signo del divisor).
+    """
+    return a - _idiv_trunc(a, b) * b
+
+
 _BIN_OPS = {
     "+":  lambda a, b: a + b,
     "-":  lambda a, b: a - b,
     "*":  lambda a, b: a * b,
-    "/":  lambda a, b: a / b if isinstance(a, float) or isinstance(b, float) else a // b,
-    "%":  lambda a, b: a % b,
+    "/":  lambda a, b: a / b if isinstance(a, float) or isinstance(b, float) else _idiv_trunc(a, b),
+    "%":  lambda a, b: a % b if isinstance(a, float) or isinstance(b, float) else _imod_trunc(a, b),
     "==": lambda a, b: a == b,
     "!=": lambda a, b: a != b,
     "<":  lambda a, b: a < b,
