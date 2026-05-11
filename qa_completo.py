@@ -366,9 +366,9 @@ caso_tac("D.4 Comparaciones",
          "programa { entero a = 1; entero b = 2; booleano c = a < b; booleano d = a == b; }",
          ops=["<", "=="])
 
-caso_tac("D.5 Operaciones logicas",
+caso_tac("D.5 Operaciones logicas (short-circuit con saltos)",
          "programa { booleano b = verdadero || (verdadero && verdadero); }",
-         ops=["||", "&&"])
+         ops=["if_false", "if_true", "label"])
 
 caso_tac("D.6 Operacion logica NOT",
          "programa { booleano b = verdadero; booleano c = !b; }",

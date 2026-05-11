@@ -144,6 +144,26 @@ class GeneradorTAC:
         self.emit("call", id_.get("valor", "?"), str(len(ids)), t)
         return t
 
+    def _g_short_circuit(self, node, corto_si):
+        """Genera TAC con short-circuit para && (corto_si='if_false')
+        y || (corto_si='if_true').
+
+        Patron:
+            tmp = <izq>
+            <corto_si> tmp goto L_short      # salta si ya quedo determinado
+            tmp = <der>
+            label L_short
+        """
+        izq = self._g_expr(node["left"])
+        tmp = self._nuevo_temp()
+        self.emit("=", izq, None, tmp)
+        L_short = self._nueva_etiq()
+        self.emit(corto_si, tmp, None, L_short)
+        der = self._g_expr(node["right"])
+        self.emit("=", der, None, tmp)
+        self.emit("label", None, None, L_short)
+        return tmp
+
     def _g_expr(self, node):
         if not node:
             return "_"
@@ -182,10 +202,18 @@ class GeneradorTAC:
                 self.emit(op_val, operand, None, tmp)
             return tmp
         if t == "BinaryOp":
+            op_tipo = node["op"]["tipo"]
+            # Short-circuit para && y || : NO evaluar el lado derecho si el
+            # resultado ya esta determinado por el izquierdo. Esto es
+            # semantica obligatoria: con efectos secundarios (leer / call),
+            # evaluar ambos lados cambia el comportamiento del programa.
+            if op_tipo in ("AND", "Y_LOGICO"):
+                return self._g_short_circuit(node, corto_si="if_false")
+            if op_tipo in ("OR", "O_LOGICO"):
+                return self._g_short_circuit(node, corto_si="if_true")
             izq = self._g_expr(node["left"])
             der = self._g_expr(node["right"])
             tmp = self._nuevo_temp()
-            op_tipo = node["op"]["tipo"]
             op = _BIN_TIPOS.get(op_tipo, node["op"]["valor"])
             self.emit(op, izq, der, tmp)
             return tmp
