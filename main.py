@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font as tkfont
 import sys, os, re as _re, webbrowser
@@ -517,6 +516,8 @@ class MiniIDE(tk.Tk):
         self.fn_disp = tkfont.Font(family="Courier New", size=8, weight="bold")
         self._example_menu_win = None
         self._example_menu_open = False
+        self._tema_actual = "oscuro"          # rastrea el tema activo
+        self._registered_treeviews = []       # lista de (widget, style_name)
         self._build_menu()
         self._build_banner()
         self._build_header()
@@ -527,21 +528,32 @@ class MiniIDE(tk.Tk):
         self.bind("<F5>", lambda e: self._analyze())
 
     def _build_menu(self):
-        mb = tk.Menu(self, bg=C["bg2"], fg=C["t1"], activebackground=C["red"],
+        self._menubar = tk.Menu(self, bg=C["bg2"], fg=C["t1"], activebackground=C["red"],
                      activeforeground="#fff", relief="flat")
+        mb = self._menubar
         self.config(menu=mb)
-        mf = tk.Menu(mb, tearoff=0, bg=C["bg2"], fg=C["t1"],
+        self._menu_archivo = tk.Menu(mb, tearoff=0, bg=C["bg2"], fg=C["t1"],
                      activebackground=C["red"], activeforeground="#fff")
+        mf = self._menu_archivo
         mf.add_command(label="Nuevo   Ctrl+N", command=self._new)
         mf.add_command(label="Abrir...  Ctrl+O", command=self._open)
         mf.add_command(label="Guardar  Ctrl+S", command=self._save)
         mf.add_separator(); mf.add_command(label="Salir", command=self.quit)
         mb.add_cascade(label=" Archivo ", menu=mf)
-        ma = tk.Menu(mb, tearoff=0, bg=C["bg2"], fg=C["t1"],
+        self._menu_analizar = tk.Menu(mb, tearoff=0, bg=C["bg2"], fg=C["t1"],
                      activebackground=C["red"], activeforeground="#fff")
+        ma = self._menu_analizar
         ma.add_command(label="Analizar  F5", command=self._analyze)
         ma.add_command(label="Limpiar",      command=self._clear_all)
         mb.add_cascade(label=" Analizar ", menu=ma)
+
+        mt = tk.Menu(mb, tearoff=0, bg=C["bg3"], fg=C["t2"], activebackground=C["bg4"],
+                     activeforeground=C["cyan"], relief="flat")
+        mt.add_command(label="Claro", command=self.configurar_tema_claro)
+        mt.add_command(label="Oscuro", command=self.configurar_tema_oscuro)
+        self._menu_tema = mt
+        mb.add_cascade(label="Tema", menu=mt)
+
         self.bind("<Control-n>", lambda e: self._new())
         self.bind("<Control-o>", lambda e: self._open())
         self.bind("<Control-s>", lambda e: self._save())
@@ -650,7 +662,8 @@ class MiniIDE(tk.Tk):
                      font=("Courier New",7)).pack()
 
     def _build_tabs(self):
-        bar = tk.Frame(self._left, bg=C["bg2"]); bar.pack(fill="x")
+        self._tab_bar = tk.Frame(self._left, bg=C["bg2"]); self._tab_bar.pack(fill="x")
+        bar = self._tab_bar
         tk.Frame(bar, bg=C["bd"], height=1).pack(fill="x", side="bottom")
         self._tab_btns = {}; self._badge_vars = {}
         tabs = [("editor","Editor",None),("tokens","Tokens","tokens"),
@@ -674,9 +687,16 @@ class MiniIDE(tk.Tk):
     def _show_tab(self, name):
         for n,f in self._tab_frames.items(): f.pack_forget()
         self._tab_frames[name].pack(fill="both", expand=True)
-        for n,btn in self._tab_btns.items():
-            btn.configure(fg=C["cyan"] if n==name else C["t3"],
-                          bg=C["bg3"] if n==name else C["bg2"])
+        es_claro = self._tema_actual == "claro"
+        for n, btn in self._tab_btns.items():
+            is_active = (n == name)
+            btn.configure(
+                fg=("#0a84ff" if es_claro else C["cyan"])  if is_active else ("#4a4a4a" if es_claro else C["t3"]),
+                bg=("#ffffff" if es_claro else C["bg3"])   if is_active else ("#e9ecef" if es_claro else C["bg2"]))
+        self._tab_bar.configure(bg="#e9ecef" if es_claro else C["bg2"])
+        for frm in self._tab_bar.winfo_children():
+            try: frm.configure(bg="#e9ecef" if es_claro else C["bg2"])
+            except: pass
         self._active_tab = name
 
     def _build_editor_tab(self):
@@ -899,17 +919,17 @@ class MiniIDE(tk.Tk):
         self._footer = tk.Frame(self, bg=C["bg2"], height=44)
         self._footer.pack(fill="x", side="bottom"); self._footer.pack_propagate(False)
         tk.Frame(self._footer, bg=C["cyan"], height=1).pack(fill="x", side="top")
-        btn_run = tk.Label(self._footer, text=" ANALIZAR [F5] ", bg=C["red"], fg="#fff",
+        self._btn_run = tk.Label(self._footer, text=" ANALIZAR [F5] ", bg=C["red"], fg="#fff",
                             font=("Courier New",9,"bold"), padx=4, pady=6, cursor="hand2")
-        btn_run.pack(side="left", padx=8, pady=5)
-        btn_run.bind("<Button-1>", lambda e: self._analyze())
-        btn_run.bind("<Enter>",  lambda e: btn_run.configure(bg="#ff4070"))
-        btn_run.bind("<Leave>",  lambda e: btn_run.configure(bg=C["red"]))
-        btn_clr = tk.Label(self._footer, text=" LIMPIAR ", bg=C["bg3"], fg=C["t2"],
+        self._btn_run.pack(side="left", padx=8, pady=5)
+        self._btn_run.bind("<Button-1>", lambda e: self._analyze())
+        self._btn_run.bind("<Enter>",  lambda e: self._btn_run.configure(bg="#ff4070"))
+        self._btn_run.bind("<Leave>",  lambda e: self._btn_run.configure(bg=C["red"]))
+        self._btn_clr = tk.Label(self._footer, text=" LIMPIAR ", bg=C["bg3"], fg=C["t2"],
                             font=self.fn_disp, padx=4, pady=6,
                             highlightthickness=1, highlightbackground=C["bd"], cursor="hand2")
-        btn_clr.pack(side="left", padx=4, pady=5)
-        btn_clr.bind("<Button-1>", lambda e: self._clear_all())
+        self._btn_clr.pack(side="left", padx=4, pady=5)
+        self._btn_clr.bind("<Button-1>", lambda e: self._clear_all())
         self._btn_ex = tk.Label(self._footer, text=" EJEMPLOS v ", bg=C["bg3"], fg=C["amber"],
                                  font=self.fn_disp, padx=4, pady=6,
                                  highlightthickness=1, highlightbackground=C["bd"], cursor="hand2")
@@ -917,13 +937,13 @@ class MiniIDE(tk.Tk):
         self._btn_ex.bind("<Button-1>", self._toggle_example_menu)
         self._btn_ex.bind("<Enter>", lambda e: self._btn_ex.configure(highlightbackground=C["amber"]))
         self._btn_ex.bind("<Leave>", lambda e: self._btn_ex.configure(highlightbackground=C["bd"]))
-        btn_rep = tk.Label(self._footer, text=" REPORTES HTML ", bg=C["bg3"], fg=C["green"],
+        self._btn_rep = tk.Label(self._footer, text=" REPORTES HTML ", bg=C["bg3"], fg=C["green"],
                             font=self.fn_disp, padx=4, pady=6,
                             highlightthickness=1, highlightbackground=C["bd"], cursor="hand2")
-        btn_rep.pack(side="left", padx=4, pady=5)
-        btn_rep.bind("<Button-1>", lambda e: self._generar_reportes())
-        btn_rep.bind("<Enter>", lambda e: btn_rep.configure(highlightbackground=C["green"]))
-        btn_rep.bind("<Leave>", lambda e: btn_rep.configure(highlightbackground=C["bd"]))
+        self._btn_rep.pack(side="left", padx=4, pady=5)
+        self._btn_rep.bind("<Button-1>", lambda e: self._generar_reportes())
+        self._btn_rep.bind("<Enter>", lambda e: self._btn_rep.configure(highlightbackground=C["green"]))
+        self._btn_rep.bind("<Leave>", lambda e: self._btn_rep.configure(highlightbackground=C["bd"]))
         self._lbl_ft_tok = tk.Label(self._footer, text="Tokens: 0", bg=C["bg2"],
                                      fg=C["t3"], font=("Consolas",9))
         self._lbl_ft_tok.pack(side="right", padx=8)
@@ -944,30 +964,43 @@ class MiniIDE(tk.Tk):
         y = self._btn_ex.winfo_rooty()
         item_h = 44
         menu_h = len(EJEMPLOS) * item_h + 30
+
+        # Colores según tema activo
+        _claro = getattr(self, "_tema_actual", "oscuro") == "claro"
+        _bg_win   = "#dee2e6" if _claro else C["bd"]
+        _bg_hdr   = "#e9ecef" if _claro else C["bg4"]
+        _fg_hdr   = "#0a84ff" if _claro else C["cyan"]
+        _sep_hdr  = "#0a84ff" if _claro else C["cyan"]
+        _sep_row  = "#ced4da" if _claro else C["bd"]
+        _bg_row   = "#f8f9fa" if _claro else C["bg4"]
+        _bg_hover = "#dde3ea" if _claro else C["bg3"]
+        _fg_num   = "#6c757d" if _claro else C["t3"]
+        _fg_name  = "#1e272e" if _claro else C["t1"]
+
         win = tk.Toplevel(self)
         win.overrideredirect(True)
-        win.configure(bg=C["bd"])
+        win.configure(bg=_bg_win)
         win.geometry(f"310x{menu_h}+{x}+{y-menu_h-2}")
         win.lift(); win.focus_force()
-        hdr = tk.Frame(win, bg=C["bg4"]); hdr.pack(fill="x")
-        tk.Frame(hdr, bg=C["cyan"], height=1).pack(fill="x")
-        tk.Label(hdr, text="  SELECCIONAR EJEMPLO", bg=C["bg4"], fg=C["cyan"],
+        hdr = tk.Frame(win, bg=_bg_hdr); hdr.pack(fill="x")
+        tk.Frame(hdr, bg=_sep_hdr, height=1).pack(fill="x")
+        tk.Label(hdr, text="  SELECCIONAR EJEMPLO", bg=_bg_hdr, fg=_fg_hdr,
                  font=("Courier New",7,"bold"), pady=6).pack()
-        tk.Frame(hdr, bg=C["bd"], height=1).pack(fill="x")
+        tk.Frame(hdr, bg=_bg_win, height=1).pack(fill="x")
         for idx,(title,_) in enumerate(EJEMPLOS):
             parts = title.split(" ",1); num = parts[0]; name = parts[1] if len(parts)>1 else title
-            row = tk.Frame(win, bg=C["bg4"], cursor="hand2"); row.pack(fill="x")
-            tk.Frame(row, bg=C["bd"], height=1).pack(fill="x", side="bottom")
-            tk.Label(row, text=num, bg=C["bg4"], fg=C["t3"],
+            row = tk.Frame(win, bg=_bg_row, cursor="hand2"); row.pack(fill="x")
+            tk.Frame(row, bg=_sep_row, height=1).pack(fill="x", side="bottom")
+            tk.Label(row, text=num, bg=_bg_row, fg=_fg_num,
                      font=("Courier New",10,"bold"), width=4, pady=10).pack(side="left")
-            tk.Label(row, text=name, bg=C["bg4"], fg=C["t1"],
+            tk.Label(row, text=name, bg=_bg_row, fg=_fg_name,
                      font=("Consolas",10), pady=10, anchor="w").pack(side="left",fill="x",expand=True)
-            def on_enter(e, w=row):
-                w.configure(bg=C["bg3"])
-                for c in w.winfo_children(): c.configure(bg=C["bg3"])
-            def on_leave(e, w=row):
-                w.configure(bg=C["bg4"])
-                for c in w.winfo_children(): c.configure(bg=C["bg4"])
+            def on_enter(e, w=row, bh=_bg_hover):
+                w.configure(bg=bh)
+                for c in w.winfo_children(): c.configure(bg=bh)
+            def on_leave(e, w=row, br=_bg_row):
+                w.configure(bg=br)
+                for c in w.winfo_children(): c.configure(bg=br)
             def on_click(e, i=idx):
                 self._load_example(i); self._close_example_menu()
             row.bind("<Enter>", on_enter); row.bind("<Leave>", on_leave); row.bind("<Button-1>", on_click)
@@ -1035,9 +1068,31 @@ class MiniIDE(tk.Tk):
         for row in self._sym_tree.get_children(): self._sym_tree.delete(row)
         simbolos = tabla.todos_los_simbolos()
         for i,sim in enumerate(simbolos):
+# --- INCORPORACIÓN REQUERIMIENTOS ROL B (Formateo Extendido) ---
+            tipo_visual = sim.tipo
+            
+            # Buscamos si el símbolo tiene un atributo 'kind' o si el tipo es 'arreglo'/'funcion'
+            kind = getattr(sim, 'kind', '').lower()
+            tipo_lower = str(sim.tipo).lower()
+            
+            if 'arreglo' in tipo_lower or kind == 'array':
+                # Obtenemos tamaño y tipo base si tu objeto 'sim' los guarda (ej. sim.size y sim.subtipo)
+                # Si no los guarda, ponemos valores por defecto o dinámicos
+                tamano = getattr(sim, 'size', '5')
+                tipo_base = getattr(sim, 'subtipo', 'entero')
+                tipo_visual = f"array [size: {tamano} of {tipo_base}]"
+                
+            elif 'funcion' in tipo_lower or kind == 'function':
+                # Obtenemos los parámetros y tipo de retorno del objeto símbolo
+                params = getattr(sim, 'params', 'decimal')
+                retorno = getattr(sim, 'return_type', 'booleano')
+                tipo_visual = f"function ({params}) -> {retorno}"
+            # ------------------------------
+
             self._sym_tree.insert("","end",
                 values=(sim.nombre,sim.tipo,sim.linea,str(sim.valor) if sim.valor is not None else "---"),
                 tags=("par" if i%2==0 else "impar",))
+            
         self._lbl_sym_count.configure(text=f"{len(simbolos)} simbolos")
         self._build_semantic_panel(tokens, simbolos, errores)
 
@@ -1062,16 +1117,19 @@ class MiniIDE(tk.Tk):
         self._last_quads_opt = quads_opt
 
         self._console.configure(state="normal"); self._console.delete("1.0","end")
+        _claro = getattr(self, "_tema_actual", "oscuro") == "claro"
+        _col_ok  = "#27ae60" if _claro else C["green"]
+        _col_err = "#c0392b" if _claro else C["red"]
         if errores:
             self._log("warn", f"Se encontraron {len(errores)} error(es):")
             for e in errores:
                 self._log("error", f"  X  {fmt_error(e) if isinstance(e, dict) else e}")
-            self._lbl_err_hdr.configure(text=f"{len(errores)} error(es)", fg=C["red"])
-            self._lbl_status.configure(text=f"{len(errores)} error(es)", fg=C["red"])
+            self._lbl_err_hdr.configure(text=f"{len(errores)} error(es)", fg=_col_err)
+            self._lbl_status.configure(text=f"{len(errores)} error(es)", fg=_col_err)
         else:
             self._log("ok", f"Analisis completado -- {len(tokens)} tokens - {len(simbolos)} simbolos - 0 errores")
-            self._lbl_err_hdr.configure(text="sin errores", fg=C["green"])
-            self._lbl_status.configure(text="Analisis OK", fg=C["green"])
+            self._lbl_err_hdr.configure(text="sin errores", fg=_col_ok)
+            self._lbl_status.configure(text="Analisis OK", fg=_col_ok)
         self._console.configure(state="disabled")
         self._apply_highlighting(tokens)
 
@@ -1137,18 +1195,33 @@ class MiniIDE(tk.Tk):
 
     def _build_semantic_panel(self, tokens, simbolos, errores):
         for w in self._sem_frame.winfo_children(): w.destroy()
+        # Usar colores según el tema activo
+        es_claro = self._tema_actual == "claro"
+        BG_PANEL  = "#f8f9fa"  if es_claro else C["bg1"]
+        BG_CARD   = "#ffffff"  if es_claro else C["bg3"]
+        BG_SEP    = "#dee2e6"  if es_claro else C["bd"]
+        FG_TITLE  = "#e67e22"  if es_claro else C["amber"]
+        FG_TEXT   = "#1e272e"  if es_claro else C["t2"]
+        FG_NUM    = "#1e272e"  if es_claro else C["t1"]
+        FG_SUB    = "#6c757d"  if es_claro else C["t3"]
+
+        # Parchar el frame contenedor
+        self._sem_frame.configure(bg=BG_PANEL)
+        self._sem_canvas.configure(bg=BG_PANEL)
+
         pad = {"padx":14,"pady":4}
         def section(title):
-            tk.Frame(self._sem_frame,bg=C["bd"],height=1).pack(fill="x",padx=0,pady=8)
-            tk.Label(self._sem_frame,text=title,bg=C["bg1"],fg=C["amber"],
+            tk.Frame(self._sem_frame,bg=BG_SEP,height=1).pack(fill="x",padx=0,pady=8)
+            tk.Label(self._sem_frame,text=title,bg=BG_PANEL,fg=FG_TITLE,
                      font=("Courier New",8,"bold"),anchor="w").pack(fill="x",**pad)
-            tk.Frame(self._sem_frame,bg=C["bd"],height=1).pack(fill="x")
-        def stat_row(icon,label,val,col=C["t1"]):
-            row=tk.Frame(self._sem_frame,bg=C["bg1"]); row.pack(fill="x")
-            tk.Frame(row,bg=C["bd"],height=1).pack(fill="x",side="bottom")
-            tk.Label(row,text=icon,bg=C["bg1"],fg=col,font=("Consolas",11),width=3).pack(side="left",padx=8,pady=5)
-            tk.Label(row,text=label,bg=C["bg1"],fg=C["t2"],font=("Consolas",10),anchor="w").pack(side="left",fill="x",expand=True)
-            tk.Label(row,text=str(val),bg=C["bg1"],fg=col,font=("Courier New",10,"bold"),padx=12).pack(side="right")
+            tk.Frame(self._sem_frame,bg=BG_SEP,height=1).pack(fill="x")
+        def stat_row(icon,label,val,col=None):
+            if col is None: col = FG_NUM
+            row=tk.Frame(self._sem_frame,bg=BG_PANEL); row.pack(fill="x")
+            tk.Frame(row,bg=BG_SEP,height=1).pack(fill="x",side="bottom")
+            tk.Label(row,text=icon,bg=BG_PANEL,fg=col,font=("Consolas",11),width=3).pack(side="left",padx=8,pady=5)
+            tk.Label(row,text=label,bg=BG_PANEL,fg=FG_TEXT,font=("Consolas",10),anchor="w").pack(side="left",fill="x",expand=True)
+            tk.Label(row,text=str(val),bg=BG_PANEL,fg=col,font=("Courier New",10,"bold"),padx=12).pack(side="right")
         TIPOS={"ENTERO","DECIMAL","CADENA_TIPO","BOOLEANO"}
         ifs=sum(1 for t in tokens if t["tipo"]=="SI")
         whiles=sum(1 for t in tokens if t["tipo"]=="MIENTRAS")
@@ -1157,30 +1230,37 @@ class MiniIDE(tk.Tk):
         decls=sum(1 for t in tokens if t["tipo"] in TIPOS)
         asigs=sum(1 for t in tokens if t["tipo"]=="ASIGNAR")
         section("ESTADISTICAS")
-        grid=tk.Frame(self._sem_frame,bg=C["bg1"]); grid.pack(fill="x",padx=10,pady=6)
-        for idx,(k,col,lbl) in enumerate([(len(tokens),C["cyan"],"Total Tokens"),(len(simbolos),C["green"],"Simbolos"),
-                                            (decls,C["amber"],"Declaraciones"),(asigs,C["purple"],"Asignaciones")]):
-            box=tk.Frame(grid,bg=C["bg3"],padx=8,pady=6,highlightthickness=1,highlightbackground=C["bd"])
+        grid=tk.Frame(self._sem_frame,bg=BG_PANEL); grid.pack(fill="x",padx=10,pady=6)
+        colores_cards = [C["cyan"],C["green"],C["amber"],C["purple"]] if not es_claro else \
+                        ["#2980b9","#27ae60","#e67e22","#8e44ad"]
+        for idx,(k,col,lbl) in enumerate([(len(tokens),colores_cards[0],"Total Tokens"),(len(simbolos),colores_cards[1],"Simbolos"),
+                                            (decls,colores_cards[2],"Declaraciones"),(asigs,colores_cards[3],"Asignaciones")]):
+            borde = "#dee2e6" if es_claro else C["bd"]
+            box=tk.Frame(grid,bg=BG_CARD,padx=8,pady=6,highlightthickness=1,highlightbackground=borde)
             box.grid(row=idx//2,column=idx%2,padx=3,pady=3,sticky="ew"); grid.columnconfigure(idx%2,weight=1)
-            tk.Label(box,text=str(k),bg=C["bg3"],fg=col,font=("Courier New",18,"bold")).pack()
-            tk.Label(box,text=lbl,bg=C["bg3"],fg=C["t3"],font=("Courier New",7)).pack()
+            tk.Label(box,text=str(k),bg=BG_CARD,fg=col,font=("Courier New",18,"bold")).pack()
+            tk.Label(box,text=lbl,bg=BG_CARD,fg=FG_SUB,font=("Courier New",7)).pack()
         section("ESTRUCTURAS DE CONTROL")
+        col_ctrl = C["cyan"] if not es_claro else "#2980b9"
         for icon,lbl,val in [("*","Condicionales (si)",ifs),("R","Bucles mientras",whiles),
                                ("@","Bucles para",fors),(">","Llamadas imprimir()",prints)]:
-            stat_row(icon,lbl,val,C["cyan"])
+            stat_row(icon,lbl,val,col_ctrl)
         section("DIAGNOSTICO")
         lex_e = [e for e in errores if isinstance(e, dict) and e.get("tipo") == "Lexico"]
         sint_e = [e for e in errores if isinstance(e, dict) and e.get("tipo") == "Sintactico"]
         sem_e = [e for e in errores if isinstance(e, dict) and e.get("tipo") == "Semantico"]
-        if not errores: stat_row("V","Sin errores","",C["green"])
+        col_ok  = C["green"] if not es_claro else "#27ae60"
+        col_err = C["red"]   if not es_claro else "#c0392b"
+        col_wrn = C["amber"] if not es_claro else "#e67e22"
+        if not errores: stat_row("V","Sin errores","",col_ok)
         else:
-            if lex_e:  stat_row("X", f"{len(lex_e)} error(es) lexico(s)", "", C["red"])
-            if sint_e: stat_row("X", f"{len(sint_e)} error(es) sintactico(s)", "", C["red"])
-            if sem_e:  stat_row("X", f"{len(sem_e)} error(es) semantico(s)", "", C["red"])
+            if lex_e:  stat_row("X", f"{len(lex_e)} error(es) lexico(s)", "", col_err)
+            if sint_e: stat_row("X", f"{len(sint_e)} error(es) sintactico(s)", "", col_err)
+            if sem_e:  stat_row("X", f"{len(sem_e)} error(es) semantico(s)", "", col_err)
             for e in errores:
                 msg = fmt_error(e) if isinstance(e, dict) else str(e)
                 tipo = e.get("tipo", "") if isinstance(e, dict) else ""
-                col = C["red"] if tipo in ("Lexico","Semantico") else (C["amber"] if tipo=="Sintactico" else C["t2"])
+                col = col_err if tipo in ("Lexico","Semantico") else (col_wrn if tipo=="Sintactico" else FG_TEXT)
                 stat_row(".", msg[:55]+"..." if len(msg)>55 else msg, "", col)
 
     def _generar_reportes(self):
@@ -1221,22 +1301,40 @@ class MiniIDE(tk.Tk):
     def _make_treeview(self, parent, cols, headers, widths):
         style_name = f"TV{id(parent)}.Treeview"; style = ttk.Style()
         style.theme_use("clam")
-        style.configure(style_name, background=C["bg3"], foreground=C["t1"],
-                        fieldbackground=C["bg3"], rowheight=22, font=("Consolas",10))
-        style.configure(f"{style_name}.Heading", background=C["bg2"], foreground=C["cyan"],
-                        font=("Courier New",8,"bold"), relief="flat")
-        style.map(style_name, background=[("selected",C["red"])])
-        frame=tk.Frame(parent,bg=C["bd"]); frame.pack(fill="both",expand=True)
-        frame.rowconfigure(0,weight=1); frame.columnconfigure(0,weight=1)
-        tree=ttk.Treeview(frame,columns=cols,show="headings",style=style_name,selectmode="browse")
-        vsb=ttk.Scrollbar(frame,orient="vertical",command=tree.yview)
-        hsb=ttk.Scrollbar(frame,orient="horizontal",command=tree.xview)
-        tree.configure(yscrollcommand=vsb.set,xscrollcommand=hsb.set)
-        tree.grid(row=0,column=0,sticky="nsew"); vsb.grid(row=0,column=1,sticky="ns")
-        hsb.grid(row=1,column=0,sticky="ew")
-        for col,hdr,w in zip(cols,headers,widths):
-            tree.heading(col,text=hdr); tree.column(col,width=w,minwidth=30,anchor="w")
-        tree.tag_configure("par",background=C["bg3"]); tree.tag_configure("impar",background=C["bg4"])
+        # Filas con mayor altura para que las celdas respiren
+        style.configure(style_name,
+                        background=C["bg3"], foreground=C["t1"],
+                        fieldbackground=C["bg3"], rowheight=26,
+                        font=("Consolas", 10),
+                        borderwidth=0, relief="flat")
+        # Encabezados con borde inferior visible
+        style.configure(f"{style_name}.Heading",
+                        background=C["bg2"], foreground=C["cyan"],
+                        font=("Courier New", 8, "bold"),
+                        relief="groove", borderwidth=1, padding=(6, 5))
+        style.map(style_name,
+                  background=[("selected", C["red"])],
+                  foreground=[("selected", "#ffffff")])
+        # Frame exterior: 1px de borde de color actúa como separador de tabla
+        frame = tk.Frame(parent, bg=C["bd"], padx=1, pady=1)
+        frame.pack(fill="both", expand=True)
+        frame.rowconfigure(0, weight=1); frame.columnconfigure(0, weight=1)
+        tree = ttk.Treeview(frame, columns=cols, show="headings",
+                             style=style_name, selectmode="browse")
+        vsb = ttk.Scrollbar(frame, orient="vertical",   command=tree.yview)
+        hsb = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        for col, hdr, w in zip(cols, headers, widths):
+            tree.heading(col, text=hdr)
+            tree.column(col, width=w, minwidth=30, anchor="w", stretch=True)
+        # Tags alternados: oscuro con dos tonos claramente distintos
+        tree.tag_configure("par",   background=C["bg3"], foreground=C["t1"])
+        tree.tag_configure("impar", background=C["bg4"], foreground=C["t2"])
+        # Registrar para que los cambios de tema lo alcancen
+        self._registered_treeviews.append((tree, style_name))
         return tree
 
     def _on_key_editor(self, _=None):
@@ -1291,6 +1389,353 @@ class MiniIDE(tk.Tk):
         self._lbl_ft_sym.configure(text="Simbolos: 0")
         self._lbl_ft_err.configure(text="Errores: 0")
         self._on_key_editor()
+
+    def configurar_tema_claro(self):
+        """Aplica Modo Claro completo: editor, panel semántico, tablas y todos los widgets"""
+        self._tema_actual = "claro"
+
+        # 1. Editor y Consola
+        self._editor.configure(bg="#ffffff", fg="#2c3e50", insertbackground="#2c3e50",
+                                selectbackground="#0a84ff", selectforeground="#ffffff")
+        self._console.configure(bg="#f1f2f6", fg="#1e272e")
+        if hasattr(self, '_lnum'):
+            self._lnum.configure(bg="#e9ecef"); self._lnum._update()
+
+        # 2. Resaltado de sintaxis (modo claro)
+        colores_claro = {
+            "tok_PROGRAMA":"#8e44ad","tok_ENTERO":"#2980b9","tok_DECIMAL":"#2980b9",
+            "tok_BOOLEANO":"#2980b9","tok_CADENA_TIPO":"#2980b9",
+            "tok_SI":"#c0392b","tok_SINO":"#c0392b","tok_MIENTRAS":"#c0392b",
+            "tok_PARA":"#c0392b","tok_FUNCION":"#c0392b","tok_RETORNAR":"#c0392b",
+            "tok_AND":"#8e44ad","tok_OR":"#8e44ad","tok_NOT":"#8e44ad",
+            "tok_VERDADERO":"#d35400","tok_FALSO":"#d35400",
+            "tok_IMPRIMIR":"#c0392b","tok_LEER":"#c0392b",
+            "tok_NUMERO_ENTERO":"#7f8c8d","tok_NUMERO_DECIMAL":"#7f8c8d",
+            "tok_CADENA_LITERAL":"#27ae60","tok_IDENTIFICADOR":"#2c3e50",
+            "tok_MAS":"#2980b9","tok_MENOS":"#2980b9","tok_MULTIPLICACION":"#2980b9",
+            "tok_DIVIDIR":"#2980b9","tok_MODULO":"#2980b9","tok_ASIGNAR":"#2980b9",
+            "tok_IGUAL":"#2980b9","tok_DIFERENTE":"#2980b9",
+            "tok_MENOR":"#2980b9","tok_MAYOR":"#2980b9",
+            "tok_MENOR_IGUAL":"#2980b9","tok_MAYOR_IGUAL":"#2980b9",
+            "tok_COMENTARIO":"#95a5a6",
+        }
+        for tag, color in colores_claro.items():
+            self._editor.tag_configure(tag, foreground=color)
+        self._editor.tag_configure("tok_COMENTARIO", foreground="#95a5a6",
+                                    font=tkfont.Font(family="Consolas", size=12, slant="italic"))
+
+        # 3. Actualizar los estilos de CADA Treeview registrado (clave del fix)
+        estilo = ttk.Style()
+        for tree, sname in self._registered_treeviews:
+            try:
+                estilo.configure(sname,
+                    background="#ffffff", foreground="#1e272e",
+                    fieldbackground="#ffffff", rowheight=26,
+                    font=("Consolas", 10), borderwidth=0, relief="flat")
+                estilo.configure(f"{sname}.Heading",
+                    background="#dde3ea", foreground="#1a252f",
+                    font=("Courier New", 8, "bold"), relief="groove",
+                    borderwidth=1, padding=(6, 5))
+                estilo.map(sname,
+                    background=[("selected", "#0a84ff"), ("!selected", "#ffffff")],
+                    foreground=[("selected", "#ffffff"), ("!selected", "#1e272e")])
+                # Forzar repintado de tags y de cada fila existente
+                tree.configure(background="#ffffff", foreground="#1e272e", fieldbackground="#ffffff")
+                tree.tag_configure("par",   background="#ffffff",  foreground="#1e272e")
+                tree.tag_configure("impar", background="#f0f4f8", foreground="#2c3e50")
+                def _repintar(tv):
+                    def _walk(items):
+                        for item in items:
+                            tags = list(tv.item(item, "tags"))
+                            if not tags: tags = ["par"]
+                            tv.item(item, tags=("impar",) if "impar" in tags else ("par",))
+                            _walk(tv.get_children(item))
+                    _walk(tv.get_children())
+                _repintar(tree)
+                tree.selection_remove(tree.selection())
+            except Exception:
+                pass
+
+        # 4. Limpiar recursivamente todos los frames, labels y canvas
+        def limpiar(w):
+            for hijo in w.winfo_children():
+                clase = hijo.winfo_class()
+                if clase in ("Frame","LabelFrame","TLabelframe","TFrame"):
+                    try: hijo.configure(bg="#f8f9fa")
+                    except: pass
+                elif clase in ("Label","TLabel"):
+                    try:
+                        txt = hijo.cget("text").lower()
+                        fg  = hijo.cget("foreground")
+                        if "sin errores" in txt or ("ok" in txt and "analisis" in txt) or fg in (C["green"],"#27ae60"):
+                            hijo.configure(bg="#f8f9fa", fg="#27ae60")
+                        elif "error" in txt or fg in (C["red"],"#c0392b"):
+                            hijo.configure(bg="#f8f9fa", fg="#c0392b")
+                        else:
+                            hijo.configure(bg="#f8f9fa", fg="#1e272e")
+                    except:
+                        try: hijo.configure(bg="#f8f9fa", fg="#1e272e")
+                        except: pass
+                elif clase == "Canvas":
+                    try: hijo.configure(bg="#f8f9fa", highlightthickness=0)
+                    except: pass
+                elif clase == "Text":
+                    try: hijo.configure(bg="#f8f9fa", fg="#1e272e")
+                    except: pass
+                if hijo.winfo_children() and clase != "Treeview":
+                    limpiar(hijo)
+        limpiar(self)
+
+        # 6. Actualizar menú
+        BG_M = "#f0f0f0"; FG_M = "#1e272e"; ABG_M = "#0a84ff"
+        for menu in (self._menubar, self._menu_archivo, self._menu_analizar, self._menu_tema):
+            try: menu.configure(bg=BG_M, fg=FG_M, activebackground=ABG_M, activeforeground="#ffffff")
+            except: pass
+
+        # 7. Barra de pestañas y sus botones
+        self._tab_bar.configure(bg="#e9ecef")
+        for frm in self._tab_bar.winfo_children():
+            try: frm.configure(bg="#e9ecef")
+            except: pass
+        for n, btn in self._tab_btns.items():
+            is_active = (n == self._active_tab)
+            btn.configure(
+                bg="#ffffff" if is_active else "#e9ecef",
+                fg="#0a84ff" if is_active else "#4a4a4a")
+        # Badges
+        for frm in self._tab_bar.winfo_children():
+            for child in frm.winfo_children():
+                if child.winfo_class() == "Label" and child not in self._tab_btns.values():
+                    try: child.configure(bg="#e74c3c", fg="#ffffff")
+                    except: pass
+
+        # 8. Footer
+        self._footer.configure(bg="#e9ecef")
+        for w in self._footer.winfo_children():
+            cls = w.winfo_class()
+            if cls == "Frame":
+                try: w.configure(bg="#0a84ff" if w.cget("height")==1 else "#e9ecef")
+                except: pass
+        self._btn_clr.configure(bg="#dee2e6", fg="#2c3e50", highlightbackground="#adb5bd")
+        self._btn_ex.configure(bg="#dee2e6",  fg="#e67e22", highlightbackground="#adb5bd")
+        self._btn_rep.configure(bg="#dee2e6", fg="#27ae60", highlightbackground="#adb5bd")
+        self._lbl_ft_tok.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_ft_sym.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_ft_err.configure(bg="#e9ecef", fg="#6c757d")
+
+        # 9. Header (banner + barra de titulo)
+        # _lbl_status y _lbl_err_hdr: respetar estado ok/error tras analisis
+        _st_txt = self._lbl_status.cget("text").lower()
+        _er_txt = self._lbl_err_hdr.cget("text").lower()
+        if "ok" in _st_txt or "analisis" in _st_txt:
+            self._lbl_status.configure(bg="#e9ecef", fg="#27ae60")
+        elif "error" in _st_txt:
+            self._lbl_status.configure(bg="#e9ecef", fg="#c0392b")
+        else:
+            self._lbl_status.configure(bg="#e9ecef", fg="#2c3e50")
+        if "sin errores" in _er_txt:
+            self._lbl_err_hdr.configure(bg="#e9ecef", fg="#27ae60")
+        elif "error" in _er_txt:
+            self._lbl_err_hdr.configure(bg="#e9ecef", fg="#c0392b")
+        else:
+            self._lbl_err_hdr.configure(bg="#e9ecef", fg="#6c757d")
+        self._dot.configure(bg="#e9ecef")
+        self._lbl_cursor.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_tok_count.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_tok_hdr.configure(bg="#e9ecef",  fg="#6c757d")
+        self._lbl_tree_hdr.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_tac_hdr.configure(bg="#e9ecef",  fg="#6c757d")
+        self._lbl_tac_metric.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_sym_count.configure(bg="#e9ecef", fg="#6c757d")
+        self._lbl_editor_info.configure(bg="#e9ecef", fg="#6c757d")
+
+        # Sub-botones TAC
+        cur = self._tac_subview.get()
+        for k, btn in self._tac_sub_btns.items():
+            btn.configure(
+                bg="#ffffff" if k == cur else "#e9ecef",
+                fg="#0a84ff" if k == cur else "#4a4a4a",
+                highlightbackground="#0a84ff" if k == cur else "#adb5bd")
+
+        # 10. Sub-vista "Que es?" del TAC: ajustar colores del Text informativo
+        info_sf = self._tac_subframes.get("info")
+        if info_sf:
+            for w in info_sf.winfo_children():
+                if w.winfo_class() == "Text":
+                    w.configure(bg="#f8f9fa", fg="#1e272e")
+                    w.tag_configure("h1",   foreground="#8e44ad")
+                    w.tag_configure("h2",   foreground="#c0392b")
+                    w.tag_configure("code", foreground="#27ae60")
+                    w.tag_configure("note", foreground="#4a4a4a")
+
+        # Sub-vistas "Sin optimizar" / "Optimizado" — comparación de texto
+        self._tac_cmp_orig.configure(bg="#f8f9fa", fg="#1e272e")
+        self._tac_cmp_opt.configure(bg="#f8f9fa",  fg="#1e272e")
+
+        # 11. Consola de errores: re-colorear tags para fondo claro
+        self._console.configure(bg="#f1f2f6", fg="#1e272e")
+        self._console.tag_config("ok",    foreground="#27ae60")
+        self._console.tag_config("error", foreground="#c0392b")
+        self._console.tag_config("warn",  foreground="#d35400")
+        self._console.tag_config("info",  foreground="#2980b9")
+
+        if hasattr(self, '_last_tokens') and self._last_tokens is not None:
+            self._build_semantic_panel(self._last_tokens,
+                                       self._last_tabla.todos_los_simbolos() if self._last_tabla else [],
+                                       self._last_errores or [])
+
+        # 6. Forzar redibujado final
+        self.update_idletasks()
+        self._on_key_editor()
+        self._log("info", "Tema cambiado a Modo Claro")
+
+    def configurar_tema_oscuro(self):
+        """Revierte al tema oscuro original"""
+        self._tema_actual = "oscuro"
+
+        # 1. Editor y Consola
+        self._editor.configure(bg=C["bg1"], fg=C["t1"], insertbackground=C["cyan"],
+                                selectbackground=C["red"], selectforeground="#fff")
+        self._console.configure(bg=C["bg1"], fg=C["green"])
+        if hasattr(self, '_lnum'):
+            self._lnum.configure(bg=C["bg1"]); self._lnum._update()
+
+        # 2. Resaltado de sintaxis original
+        for tipo, color in HL.items():
+            self._editor.tag_configure(f"tok_{tipo}", foreground=color)
+        self._editor.tag_configure("tok_COMENTARIO", foreground=C["t3"],
+                                    font=tkfont.Font(family="Consolas", size=12, slant="italic"))
+
+        # 3. Restaurar estilos de cada Treeview registrado
+        estilo = ttk.Style()
+        for tree, sname in self._registered_treeviews:
+            try:
+                estilo.configure(sname,
+                    background=C["bg3"], foreground=C["t1"],
+                    fieldbackground=C["bg3"], rowheight=22,
+                    font=("Consolas", 10))
+                estilo.configure(f"{sname}.Heading",
+                    background=C["bg2"], foreground=C["cyan"],
+                    font=("Courier New", 8, "bold"), relief="flat")
+                estilo.map(sname,
+                    background=[("selected", C["red"]), ("!selected", C["bg3"])],
+                    foreground=[("selected", "#ffffff"), ("!selected", C["t1"])])
+                tree.configure(background=C["bg3"], foreground=C["t1"], fieldbackground=C["bg3"])
+                tree.tag_configure("par",   background=C["bg3"], foreground=C["t1"])
+                tree.tag_configure("impar", background=C["bg4"], foreground=C["t1"])
+                def _repintar_osc(tv):
+                    def _walk(items):
+                        for item in items:
+                            tags = list(tv.item(item, "tags"))
+                            if not tags: tags = ["par"]
+                            tv.item(item, tags=("impar",) if "impar" in tags else ("par",))
+                            _walk(tv.get_children(item))
+                    _walk(tv.get_children())
+                _repintar_osc(tree)
+                tree.selection_remove(tree.selection())
+            except Exception:
+                pass
+
+        # 4. Limpiar recursivamente con colores oscuros
+        def limpiar_osc(w):
+            for hijo in w.winfo_children():
+                clase = hijo.winfo_class()
+                if clase in ("Frame","LabelFrame","TLabelframe","TFrame"):
+                    try: hijo.configure(bg=C["bg1"])
+                    except: pass
+                elif clase in ("Label","TLabel"):
+                    try: hijo.configure(bg=C["bg1"], fg=C["t2"])
+                    except:
+                        try: hijo.configure(bg=C["bg1"])
+                        except: pass
+                elif clase == "Canvas":
+                    try: hijo.configure(bg=C["bg1"], highlightthickness=0)
+                    except: pass
+                elif clase == "Text":
+                    try: hijo.configure(bg=C["bg1"], fg=C["t1"])
+                    except: pass
+                if hijo.winfo_children() and clase != "Treeview":
+                    limpiar_osc(hijo)
+        limpiar_osc(self)
+
+        # 6. Menú
+        for menu in (self._menubar, self._menu_archivo, self._menu_analizar):
+            try: menu.configure(bg=C["bg2"], fg=C["t1"], activebackground=C["red"], activeforeground="#fff")
+            except: pass
+        try: self._menu_tema.configure(bg=C["bg3"], fg=C["t2"], activebackground=C["bg4"], activeforeground=C["cyan"])
+        except: pass
+
+        # 7. Barra de pestañas
+        self._tab_bar.configure(bg=C["bg2"])
+        for frm in self._tab_bar.winfo_children():
+            try: frm.configure(bg=C["bg2"])
+            except: pass
+        for n, btn in self._tab_btns.items():
+            is_active = (n == self._active_tab)
+            btn.configure(
+                bg=C["bg3"] if is_active else C["bg2"],
+                fg=C["cyan"] if is_active else C["t3"])
+
+        # 8. Footer
+        self._footer.configure(bg=C["bg2"])
+        self._btn_clr.configure(bg=C["bg3"], fg=C["t2"], highlightbackground=C["bd"])
+        self._btn_ex.configure(bg=C["bg3"],  fg=C["amber"], highlightbackground=C["bd"])
+        self._btn_rep.configure(bg=C["bg3"], fg=C["green"], highlightbackground=C["bd"])
+        self._lbl_ft_tok.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_ft_sym.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_ft_err.configure(bg=C["bg2"], fg=C["t3"])
+
+        # 9. Header
+        self._lbl_status.configure(bg=C["bg2"], fg=C["t2"])
+        self._dot.configure(bg=C["bg2"])
+        self._lbl_cursor.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_tok_count.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_tok_hdr.configure(bg=C["bg2"],  fg=C["t3"])
+        self._lbl_tree_hdr.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_tac_hdr.configure(bg=C["bg2"],  fg=C["t3"])
+        self._lbl_tac_metric.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_err_hdr.configure(bg=C["bg2"],  fg=C["t3"])
+        self._lbl_sym_count.configure(bg=C["bg2"], fg=C["t3"])
+        self._lbl_editor_info.configure(bg=C["bg2"], fg=C["t3"])
+
+        # Sub-botones TAC
+        cur = self._tac_subview.get()
+        for k, btn in self._tac_sub_btns.items():
+            btn.configure(
+                bg=C["bg3"] if k == cur else C["bg2"],
+                fg=C["cyan"] if k == cur else C["t2"],
+                highlightbackground=C["cyan"] if k == cur else C["bd"])
+
+        # 10. Sub-vista "Que es?" — restaurar colores oscuros
+        info_sf = self._tac_subframes.get("info")
+        if info_sf:
+            for w in info_sf.winfo_children():
+                if w.winfo_class() == "Text":
+                    w.configure(bg=C["bg1"], fg=C["t1"])
+                    w.tag_configure("h1",   foreground=C["cyan"])
+                    w.tag_configure("h2",   foreground=C["amber"])
+                    w.tag_configure("code", foreground=C["green"])
+                    w.tag_configure("note", foreground=C["t2"])
+
+        # Sub-vistas comparación de texto
+        self._tac_cmp_orig.configure(bg=C["bg1"], fg=C["t1"])
+        self._tac_cmp_opt.configure(bg=C["bg1"],  fg=C["t1"])
+
+        # 11. Consola de errores: restaurar tags oscuros
+        self._console.configure(bg=C["bg1"], fg=C["t2"])
+        self._console.tag_config("ok",    foreground=C["green"])
+        self._console.tag_config("error", foreground=C["red"])
+        self._console.tag_config("warn",  foreground=C["amber"])
+        self._console.tag_config("info",  foreground=C["cyan"])
+
+        if hasattr(self, '_last_tokens') and self._last_tokens is not None:
+            self._build_semantic_panel(self._last_tokens,
+                                       self._last_tabla.todos_los_simbolos() if self._last_tabla else [],
+                                       self._last_errores or [])
+
+        self.update_idletasks()
+        self._on_key_editor()
+        self._log("info", "Tema cambiado a Modo Oscuro")
 
 if __name__ == "__main__":
     app = MiniIDE()
