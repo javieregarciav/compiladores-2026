@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Tabla de simbolos (fase 1) con la API que espera el pipeline:
   - insertar(nombre, tipo, linea, valor=None) -> bool
@@ -11,16 +13,34 @@ from . import errores as _err_mod
 
 
 class Simbolo:
-    def __init__(self, nombre: str, tipo: str, linea: int, valor=None):
+    def __init__(
+        self,
+        nombre: str,
+        tipo: str,
+        linea: int,
+        valor=None,
+        kind: str = "variable",
+        elem_type: str | None = None,
+        size: int | None = None,
+        params: list | None = None,
+        return_type: str | None = None,
+        scope: int = 0,
+    ):
         self.nombre = nombre
         self.tipo = tipo
         self.linea = linea
         self.valor = valor
+        self.kind = kind
+        self.elem_type = elem_type
+        self.size = size
+        self.params = params or []
+        self.return_type = return_type
+        self.scope = scope
 
     def __repr__(self):
         return (
             f"Simbolo(nombre='{self.nombre}', tipo='{self.tipo}', "
-            f"linea={self.linea}, valor={self.valor!r})"
+            f"linea={self.linea}, valor={self.valor!r}, kind='{self.kind}')"
         )
 
 
@@ -42,15 +62,38 @@ class TablaSimbolos:
     def nivel_actual(self) -> int:
         return len(self._ambitos) - 1
 
-    def insertar(self, nombre, tipo, linea, valor=None, columna=0):
+    def insertar(
+        self,
+        nombre,
+        tipo,
+        linea,
+        valor=None,
+        columna=0,
+        kind="variable",
+        elem_type=None,
+        size=None,
+        params=None,
+        return_type=None,
+    ):
         ambito = self._ambitos[-1]
         if nombre in ambito:
             _err_mod.agregar_semantico(
-                f"Variable '{nombre}' ya fue declarada en este ambito (linea {ambito[nombre].linea})",
+                f"Identificador '{nombre}' ya fue declarado en este ambito (linea {ambito[nombre].linea})",
                 linea, columna, valor=nombre,
             )
             return False
-        sim = Simbolo(nombre, tipo, linea, valor)
+        sim = Simbolo(
+            nombre,
+            tipo,
+            linea,
+            valor,
+            kind=kind,
+            elem_type=elem_type,
+            size=size,
+            params=params,
+            return_type=return_type,
+            scope=self.nivel_actual,
+        )
         ambito[nombre] = sim
         self._historico.append(sim)
         return True

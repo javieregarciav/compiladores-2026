@@ -533,11 +533,20 @@ def generar_html_tabla_simbolos(tabla, ruta_salida):
         filas = ""
         for i, s in enumerate(simbolos, 1):
             valor = s.valor if s.valor is not None else "—"
+            kind = getattr(s, "kind", "variable")
+            tipo = s.tipo
+            if kind == "array":
+                tipo = f"array [size: {getattr(s, 'size', '—')} of {getattr(s, 'elem_type', '—')}]"
+            elif kind == "function":
+                params = getattr(s, "params", []) or []
+                if isinstance(params, list):
+                    params = ", ".join(f"{p.get('tipo', '?')} {p.get('nombre', '?')}" for p in params)
+                tipo = f"function ({params}) -> {getattr(s, 'return_type', 'void')}"
             filas += f"""
             <tr>
                 <td class="numcol">{i}</td>
                 <td><span class="code">{_esc(s.nombre)}</span></td>
-                <td>{_esc(s.tipo)}</td>
+                <td>{_esc(tipo)}</td>
                 <td>{_esc(valor)}</td>
                 <td class="linecol">{_esc(s.linea)}</td>
             </tr>"""

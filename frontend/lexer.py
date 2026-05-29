@@ -27,6 +27,7 @@ reservadas = {
     'funcion': 'FUNCION',
     'procedimiento': 'PROCEDIMIENTO',
     'retornar': 'RETORNAR',
+    'arreglo': 'ARREGLO',
     'verdadero': 'VERDADERO',
     'falso': 'FALSO',
     'imprimir': 'IMPRIMIR',
@@ -40,6 +41,7 @@ tokens = [
     'AND', 'OR', 'NOT',
     'ASIGNAR',
     'LPAREN', 'RPAREN', 'LLAVE_IZQ', 'LLAVE_DER',
+    'LCORCHETE', 'RCORCHETE',
     'PUNTO_COMA', 'COMA',
     'NUMERO_ENTERO', 'NUMERO_DECIMAL', 'CADENA_LITERAL',
     'IDENTIFICADOR',
@@ -69,6 +71,8 @@ t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_LLAVE_IZQ = r'\{'
 t_LLAVE_DER = r'\}'
+t_LCORCHETE = r'\['
+t_RCORCHETE = r'\]'
 t_PUNTO_COMA = r';'
 t_COMA = r','
 

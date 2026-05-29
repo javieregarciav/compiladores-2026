@@ -1602,7 +1602,7 @@ function runAnalysis(){
     }
 
     // ── SYMBOLS ──
-    const typeColors={int:'#5ac8fa',float:'#5ac8fa',string:'#30d158',boolean:'#ff9f0a'};
+    const typeColors={entero:'#5ac8fa',decimal:'#5ac8fa',cadena:'#30d158',booleano:'#ff9f0a'};
     if(simbolos&&simbolos.length>0){
       document.getElementById('sym-empty').style.display='none';
       document.getElementById('sym-table').style.display='table';
@@ -1610,9 +1610,15 @@ function runAnalysis(){
       simbolos.forEach((sim,i)=>{
         const tr=document.createElement('tr');
         tr.style.animationDelay=Math.min(i*12,300)+'ms';
-        const tc=typeColors[sim.tipo]||'var(--t2)';
+        let tipoVisual=sim.tipo;
+        if(sim.kind==='array'){
+          tipoVisual=`array [size: ${sim.size??'—'} of ${sim.elem_type??'—'}]`;
+        }else if(sim.kind==='function'){
+          tipoVisual=`function (${sim.params_texto||''}) -> ${sim.return_type||'void'}`;
+        }
+        const tc=typeColors[sim.elem_type||sim.tipo]||'var(--t2)';
         tr.innerHTML=`<td style="color:var(--green)">${escH(sim.nombre)}</td>
-          <td style="color:${tc}">${escH(sim.tipo)}</td>
+          <td style="color:${tc}">${escH(tipoVisual)}</td>
           <td style="color:var(--t3);text-align:center">${sim.linea}</td>
           <td style="color:var(--t3)">${escH(String(sim.valor))}</td>`;
         frag2.appendChild(tr);

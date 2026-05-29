@@ -124,7 +124,7 @@ def _propagation(codigo):
         return env.get(x, x)
 
     for q in codigo:
-        if q.op == "label":
+        if q.op in ("label", "label_func", "enter_func", "exit_func"):
 
             env = {}
             nuevo.append(q)
@@ -149,11 +149,29 @@ def _propagation(codigo):
                 if env[k] == q.dest and k != q.dest:
                     del env[k]
             continue
-        if q.op == "print":
-            new_q = Quad("print", reemplazar(q.arg1), None, None)
+        if q.op in ("print", "return"):
+            new_q = Quad(q.op, reemplazar(q.arg1), None, None)
             if new_q.arg1 != q.arg1:
                 cambio = True
             nuevo.append(new_q)
+            continue
+        if q.op == "aload":
+            a1 = reemplazar(q.arg1)
+            a2 = reemplazar(q.arg2)
+            if a1 != q.arg1 or a2 != q.arg2:
+                cambio = True
+            nuevo.append(Quad("aload", a1, a2, q.dest))
+            if q.dest is not None:
+                env.pop(q.dest, None)
+            continue
+        if q.op == "astore":
+            a1 = reemplazar(q.arg1)
+            a2 = reemplazar(q.arg2)
+            d = reemplazar(q.dest)
+            if a1 != q.arg1 or a2 != q.arg2 or d != q.dest:
+                cambio = True
+            nuevo.append(Quad("astore", a1, a2, d))
+            env = {}
             continue
         if q.op == "param":
             new_q = Quad("param", reemplazar(q.arg1), None, None)
@@ -163,7 +181,7 @@ def _propagation(codigo):
             continue
         if q.op == "call":
             nuevo.append(q)
-            env[q.dest] = q.dest if q.dest else None
+            env = {}
             continue
 
         a1 = reemplazar(q.arg1)
@@ -193,7 +211,7 @@ def _dead_code(codigo):
     nuevo = []
     cambio = False
     for q in codigo:
-        if q.op in ("=",) or q.op in _BIN_OPS or q.op == "!":
+        if q.op in ("=", "aload") or q.op in _BIN_OPS or q.op == "!":
             if q.dest and _es_temp(q.dest) and q.dest not in leidos:
                 cambio = True
                 continue
@@ -267,7 +285,7 @@ def _unreachable_code(codigo):
     saltando = False
     for q in codigo:
         if saltando:
-            if q.op == "label":
+            if q.op in ("label", "label_func"):
                 saltando = False
                 nuevo.append(q)
             else:

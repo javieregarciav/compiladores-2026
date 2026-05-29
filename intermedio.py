@@ -40,11 +40,33 @@ def formatear_tac(quads):
         elif op == "read":
             instr = f"leer {d}"
             etiqueta = ""
+        elif op == "array_decl":
+            instr = f"arreglo {a1} {d}[{a2}]"
+            etiqueta = ""
+        elif op == "aload":
+            instr = f"{d} = {a1}[{a2}]"
+            etiqueta = ""
+        elif op == "astore":
+            instr = f"{a1}[{a2}] = {d}"
+            etiqueta = ""
         elif op == "param":
             instr = f"param {a1}"
             etiqueta = ""
         elif op == "call":
             instr = f"{d} = call {a1}, {a2}"
+            etiqueta = ""
+        elif op == "label_func":
+            instr = f"func {d}:"
+            etiqueta = d
+        elif op == "enter_func":
+            firma = f"{a1} {d}({a2 if a2 != '_' else ''})"
+            instr = f"enter_func {firma}"
+            etiqueta = ""
+        elif op == "return":
+            instr = f"return {a1}" if a1 is not None else "return"
+            etiqueta = ""
+        elif op == "exit_func":
+            instr = f"exit_func {d}"
             etiqueta = ""
         elif op == "!":
             instr = f"{d} = !{a1}"

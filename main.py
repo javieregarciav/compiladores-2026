@@ -1078,19 +1078,21 @@ class MiniIDE(tk.Tk):
             if 'arreglo' in tipo_lower or kind == 'array':
                 # Obtenemos tamaño y tipo base si tu objeto 'sim' los guarda (ej. sim.size y sim.subtipo)
                 # Si no los guarda, ponemos valores por defecto o dinámicos
-                tamano = getattr(sim, 'size', '5')
-                tipo_base = getattr(sim, 'subtipo', 'entero')
+                tamano = getattr(sim, 'size', '—')
+                tipo_base = getattr(sim, 'elem_type', getattr(sim, 'subtipo', '—'))
                 tipo_visual = f"array [size: {tamano} of {tipo_base}]"
                 
             elif 'funcion' in tipo_lower or kind == 'function':
                 # Obtenemos los parámetros y tipo de retorno del objeto símbolo
-                params = getattr(sim, 'params', 'decimal')
-                retorno = getattr(sim, 'return_type', 'booleano')
+                params = getattr(sim, 'params', [])
+                if isinstance(params, list):
+                    params = ", ".join(f"{p.get('tipo','?')} {p.get('nombre','?')}" for p in params)
+                retorno = getattr(sim, 'return_type', 'void')
                 tipo_visual = f"function ({params}) -> {retorno}"
             # ------------------------------
 
             self._sym_tree.insert("","end",
-                values=(sim.nombre,sim.tipo,sim.linea,str(sim.valor) if sim.valor is not None else "---"),
+                values=(sim.nombre,tipo_visual,sim.linea,str(sim.valor) if sim.valor is not None else "---"),
                 tags=("par" if i%2==0 else "impar",))
             
         self._lbl_sym_count.configure(text=f"{len(simbolos)} simbolos")

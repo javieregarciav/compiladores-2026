@@ -90,13 +90,18 @@ def p_sentencias_uno(p):
 
 def p_sentencia(p):
     '''sentencia : declaracion
+                 | declaracion_arreglo
+                 | declaracion_funcion
                  | asignacion
+                 | asignacion_arreglo
                  | sentencia_si
                  | sentencia_mientras
                  | sentencia_hacer_mientras
                  | sentencia_para
                  | sentencia_imprimir
-                 | sentencia_leer'''
+                 | sentencia_leer
+                 | sentencia_retornar
+                 | sentencia_llamada'''
     p[0] = p[1]
 
 
@@ -130,12 +135,92 @@ def p_declaracion_con_valor(p):
     }
 
 
+def p_declaracion_arreglo(p):
+    '''declaracion_arreglo : ARREGLO tipo IDENTIFICADOR LCORCHETE NUMERO_ENTERO RCORCHETE PUNTO_COMA'''
+    p[0] = {
+        "type": "ArrayDeclaration",
+        "dataType": p[2],
+        "id": _tok_de_p(p, 3, tipo="IDENTIFICADOR"),
+        "size": _tok_de_p(p, 5, tipo="NUMERO_ENTERO"),
+    }
+
+
+def p_declaracion_funcion(p):
+    '''declaracion_funcion : FUNCION tipo IDENTIFICADOR LPAREN parametros_opt RPAREN LLAVE_IZQ sentencias LLAVE_DER
+                           | PROCEDIMIENTO IDENTIFICADOR LPAREN parametros_opt RPAREN LLAVE_IZQ sentencias LLAVE_DER'''
+    if p.slice[1].type == "FUNCION":
+        p[0] = {
+            "type": "FunctionDecl",
+            "kind": "function",
+            "kw": _tok_de_p(p, 1, tipo="FUNCION"),
+            "returnType": p[2],
+            "id": _tok_de_p(p, 3, tipo="IDENTIFICADOR"),
+            "params": p[5],
+            "body": {"type": "Block", "stmts": p[8]},
+        }
+    else:
+        p[0] = {
+            "type": "FunctionDecl",
+            "kind": "procedure",
+            "kw": _tok_de_p(p, 1, tipo="PROCEDIMIENTO"),
+            "returnType": None,
+            "id": _tok_de_p(p, 2, tipo="IDENTIFICADOR"),
+            "params": p[4],
+            "body": {"type": "Block", "stmts": p[7]},
+        }
+
+
+def p_parametros_opt(p):
+    '''parametros_opt : parametros
+                      | empty'''
+    p[0] = p[1] or []
+
+
+def p_parametros_lista(p):
+    '''parametros : parametros COMA parametro'''
+    p[0] = p[1] + [p[3]]
+
+
+def p_parametros_uno(p):
+    '''parametros : parametro'''
+    p[0] = [p[1]]
+
+
+def p_parametro_scalar(p):
+    '''parametro : tipo IDENTIFICADOR'''
+    p[0] = {
+        "type": "Param",
+        "dataType": p[1],
+        "id": _tok_de_p(p, 2, tipo="IDENTIFICADOR"),
+        "isArray": False,
+    }
+
+
+def p_parametro_arreglo(p):
+    '''parametro : ARREGLO tipo IDENTIFICADOR'''
+    p[0] = {
+        "type": "Param",
+        "dataType": p[2],
+        "id": _tok_de_p(p, 3, tipo="IDENTIFICADOR"),
+        "isArray": True,
+    }
+
+
 # Asignacion
 def p_asignacion(p):
     '''asignacion : IDENTIFICADOR ASIGNAR expresion PUNTO_COMA'''
     p[0] = {
         "type": "Assignment",
         "id": _tok_de_p(p, 1, tipo="IDENTIFICADOR"),
+        "expr": p[3],
+    }
+
+
+def p_asignacion_arreglo(p):
+    '''asignacion_arreglo : acceso_arreglo ASIGNAR expresion PUNTO_COMA'''
+    p[0] = {
+        "type": "ArrayAssignment",
+        "target": p[1],
         "expr": p[3],
     }
 
@@ -234,12 +319,38 @@ def p_argumentos_imprimir_uno(p):
 
 # Leer
 def p_sentencia_leer(p):
-    '''sentencia_leer : LEER LPAREN IDENTIFICADOR RPAREN PUNTO_COMA'''
+    '''sentencia_leer : LEER LPAREN destino_lectura RPAREN PUNTO_COMA'''
     p[0] = {
         "type": "Read",
         "kw": _tok_de_p(p, 1, tipo="LEER"),
-        "id": _tok_de_p(p, 3, tipo="IDENTIFICADOR"),
+        "id": p[3] if p[3].get("type") != "ArrayAccess" else None,
+        "target": p[3],
     }
+
+
+def p_destino_lectura_id(p):
+    '''destino_lectura : IDENTIFICADOR'''
+    p[0] = {"type": "Identifier", "token": _tok_de_p(p, 1, tipo="IDENTIFICADOR")}
+
+
+def p_destino_lectura_arreglo(p):
+    '''destino_lectura : acceso_arreglo'''
+    p[0] = p[1]
+
+
+def p_sentencia_retornar(p):
+    '''sentencia_retornar : RETORNAR expresion PUNTO_COMA
+                          | RETORNAR PUNTO_COMA'''
+    p[0] = {
+        "type": "Return",
+        "kw": _tok_de_p(p, 1, tipo="RETORNAR"),
+        "expr": p[2] if len(p) == 4 else None,
+    }
+
+
+def p_sentencia_llamada(p):
+    '''sentencia_llamada : llamada_funcion PUNTO_COMA'''
+    p[0] = p[1]
 
 
 # Expresiones binarias / unarias / agrupacion
@@ -330,6 +441,55 @@ def p_expresion_id(p):
     p[0] = {"type": "Identifier", "token": tok}
 
 
+def p_expresion_arreglo(p):
+    '''expresion : acceso_arreglo'''
+    p[0] = p[1]
+
+
+def p_acceso_arreglo(p):
+    '''acceso_arreglo : IDENTIFICADOR LCORCHETE expresion RCORCHETE'''
+    p[0] = {
+        "type": "ArrayAccess",
+        "id": _tok_de_p(p, 1, tipo="IDENTIFICADOR"),
+        "index": p[3],
+    }
+
+
+def p_expresion_llamada(p):
+    '''expresion : llamada_funcion'''
+    p[0] = p[1]
+
+
+def p_llamada_funcion(p):
+    '''llamada_funcion : IDENTIFICADOR LPAREN argumentos_llamada_opt RPAREN'''
+    p[0] = {
+        "type": "Call",
+        "id": _tok_de_p(p, 1, tipo="IDENTIFICADOR"),
+        "args": p[3],
+    }
+
+
+def p_argumentos_llamada_opt(p):
+    '''argumentos_llamada_opt : argumentos_llamada
+                              | empty'''
+    p[0] = p[1] or []
+
+
+def p_argumentos_llamada_lista(p):
+    '''argumentos_llamada : argumentos_llamada COMA expresion'''
+    p[0] = p[1] + [p[3]]
+
+
+def p_argumentos_llamada_uno(p):
+    '''argumentos_llamada : expresion'''
+    p[0] = [p[1]]
+
+
+def p_empty(p):
+    '''empty :'''
+    p[0] = None
+
+
 def p_error(p):
     if p:
         col = encontrar_columna(_ultimo_codigo[0], p)
@@ -402,10 +562,44 @@ def get_kids(node):
         if node.get("expr"):
             c.append({**node["expr"], "_label": "valor"})
         return c
+    if t == "ArrayDeclaration":
+        c = []
+        if node.get("dataType"):
+            c.append({"type": "Token", "token": node["dataType"], "_label": "Tipo"})
+        if node.get("id"):
+            c.append({"type": "Token", "token": node["id"], "_label": "ID"})
+        if node.get("size"):
+            c.append({"type": "Literal", "token": node["size"], "_label": "tam"})
+        return c
+    if t == "FunctionDecl":
+        c = []
+        if node.get("returnType"):
+            c.append({"type": "Token", "token": node["returnType"], "_label": "ret"})
+        if node.get("id"):
+            c.append({"type": "Token", "token": node["id"], "_label": "ID"})
+        for i, param in enumerate(node.get("params", [])):
+            c.append({**param, "_label": f"param{i+1}"})
+        if node.get("body"):
+            c.append({**node["body"], "_label": "body"})
+        return c
+    if t == "Param":
+        c = []
+        if node.get("dataType"):
+            c.append({"type": "Token", "token": node["dataType"], "_label": "Tipo"})
+        if node.get("id"):
+            c.append({"type": "Token", "token": node["id"], "_label": "ID"})
+        return c
     if t == "Assignment":
         c = []
         if node.get("id"):
             c.append({"type": "Identifier", "token": node["id"], "_label": "var"})
+        if node.get("expr"):
+            c.append({**node["expr"], "_label": "expr"})
+        return c
+    if t == "ArrayAssignment":
+        c = []
+        if node.get("target"):
+            c.append({**node["target"], "_label": "dest"})
         if node.get("expr"):
             c.append({**node["expr"], "_label": "expr"})
         return c
@@ -449,7 +643,15 @@ def get_kids(node):
             return [{**a, "_label": f"arg{i+1}"} for i, a in enumerate(args) if a]
         return [{**node["arg"], "_label": "arg"}] if node.get("arg") else []
     if t == "Read":
+        if node.get("target"):
+            return [{**node["target"], "_label": "var"}]
         return [{"type": "Identifier", "token": node["id"], "_label": "var"}] if node.get("id") else []
+    if t == "Return":
+        return [{**node["expr"], "_label": "valor"}] if node.get("expr") else []
+    if t == "Call":
+        return [{**a, "_label": f"arg{i+1}"} for i, a in enumerate(node.get("args", [])) if a]
+    if t == "ArrayAccess":
+        return [{**node["index"], "_label": "idx"}] if node.get("index") else []
     if t == "BinaryOp":
         c = []
         if node.get("left"):
@@ -476,9 +678,25 @@ def node_label(node):
         dt = node.get("dataType") or {}
         id_ = node.get("id") or {}
         return ("DECL " + dt.get("valor", "") + " " + id_.get("valor", "")).strip()
+    if t == "ArrayDeclaration":
+        dt = node.get("dataType") or {}
+        id_ = node.get("id") or {}
+        sz = node.get("size") or {}
+        return (f"ARREGLO {dt.get('valor', '')} {id_.get('valor', '')}[{sz.get('valor', '')}]").strip()
+    if t == "FunctionDecl":
+        id_ = node.get("id") or {}
+        return ("FUNC " if node.get("kind") == "function" else "PROC ") + id_.get("valor", "")
+    if t == "Param":
+        id_ = node.get("id") or {}
+        dt = node.get("dataType") or {}
+        pref = "arr " if node.get("isArray") else ""
+        return ("PARAM " + pref + dt.get("valor", "") + " " + id_.get("valor", "")).strip()
     if t == "Assignment":
         id_ = node.get("id") or {}
         return ("ASIG " + id_.get("valor", "")).strip()
+    if t == "ArrayAssignment":
+        id_ = (node.get("target") or {}).get("id") or {}
+        return ("ASIG " + id_.get("valor", "") + "[]").strip()
     if t == "If":
         return "SI"
     if t == "While":
@@ -491,6 +709,14 @@ def node_label(node):
         return "IMPRIMIR"
     if t == "Read":
         return "LEER"
+    if t == "Return":
+        return "RETORNAR"
+    if t == "Call":
+        id_ = node.get("id") or {}
+        return ("CALL " + id_.get("valor", "")).strip()
+    if t == "ArrayAccess":
+        id_ = node.get("id") or {}
+        return (id_.get("valor", "") + "[]").strip()
     if t == "BinaryOp":
         op = node.get("op") or {}
         return "OP  " + op.get("valor", "?")
@@ -535,6 +761,20 @@ def _tipo_compatible(declarado, expresion):
     return False
 
 
+def _tipo_desde_token(tok):
+    return _TIPO_VAR_DE_TOKEN.get(tok.get("tipo"), tok.get("valor"))
+
+
+def _firma_parametro(param):
+    tipo = _tipo_desde_token(param.get("dataType") or {})
+    return {
+        "nombre": (param.get("id") or {}).get("valor", ""),
+        "tipo": tipo,
+        "kind": "array" if param.get("isArray") else "variable",
+        "elem_type": tipo if param.get("isArray") else None,
+    }
+
+
 def check_semantic(ast, tabla, errors=None):
     """Recorre el AST y agrega errores semanticos al modulo errores.
 
@@ -561,7 +801,7 @@ def check_semantic(ast, tabla, errors=None):
         if not node:
             return
         t = node.get("type", "")
-        if t == "Declaration":
+        if t in ("Declaration", "ArrayDeclaration", "FunctionDecl"):
             id_tok = node.get("id") or {}
             nombre = id_tok.get("valor", "")
             linea = id_tok.get("linea", node.get("dataType", {}).get("linea", 0))
@@ -579,6 +819,38 @@ def check_semantic(ast, tabla, errors=None):
 
     def _sem(msg, linea, col=0, valor=""):
         _err_mod.agregar_semantico(msg, linea, col, valor=valor)
+
+    _funcion_actual = []
+
+    def _registrar_funciones_globales(node):
+        if not node:
+            return
+        if node.get("type") == "FunctionDecl":
+            id_tok = node.get("id") or {}
+            nombre = id_tok.get("valor", "")
+            if nombre:
+                ret = _tipo_desde_token(node["returnType"]) if node.get("returnType") else "void"
+                params = [_firma_parametro(p) for p in node.get("params", [])]
+                tipo = "funcion" if node.get("kind") == "function" else "procedimiento"
+                tabla.insertar(
+                    nombre,
+                    tipo,
+                    id_tok.get("linea", node.get("kw", {}).get("linea", 0)),
+                    columna=id_tok.get("columna", 0),
+                    kind="function",
+                    params=params,
+                    return_type=ret,
+                )
+            return
+        for v in node.values():
+            if isinstance(v, dict):
+                _registrar_funciones_globales(v)
+            elif isinstance(v, list):
+                for it in v:
+                    if isinstance(it, dict):
+                        _registrar_funciones_globales(it)
+
+    _registrar_funciones_globales(ast)
 
     def get_type(node):
         if not node:
@@ -609,7 +881,77 @@ def check_semantic(ast, tabla, errors=None):
                         _sem(f"Variable '{tok['valor']}' no declarada",
                              tok["linea"], tok["columna"], valor=tok["valor"])
                 return None
+            if getattr(sym, "kind", "variable") == "function":
+                _sem(f"Funcion o procedimiento '{tok['valor']}' usado sin llamada",
+                     tok["linea"], tok["columna"], valor=tok["valor"])
+                return None
+            if getattr(sym, "kind", "variable") == "array":
+                return f"arreglo:{sym.elem_type}"
             return sym.tipo
+        if t == "ArrayAccess":
+            id_tok = node["id"]
+            sym = tabla.buscar(id_tok["valor"])
+            if not sym:
+                _sem(f"Arreglo '{id_tok['valor']}' no declarado",
+                     id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                get_type(node.get("index"))
+                return None
+            if getattr(sym, "kind", "variable") != "array":
+                _sem(f"Identificador '{id_tok['valor']}' no es un arreglo",
+                     id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                get_type(node.get("index"))
+                return None
+            it = get_type(node.get("index"))
+            if it and it != "entero":
+                _sem(f"Indice de arreglo '{id_tok['valor']}' debe ser entero, no '{it}'",
+                     id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+            idx = node.get("index")
+            if idx and idx.get("type") == "Literal":
+                try:
+                    n = int(idx["token"]["valor"])
+                    if n < 0 or (sym.size is not None and n >= sym.size):
+                        _sem(f"Indice {n} fuera de rango para arreglo '{id_tok['valor']}' de tamano {sym.size}",
+                             id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                except (TypeError, ValueError):
+                    pass
+            return sym.elem_type or sym.tipo
+        if t == "Call":
+            id_tok = node["id"]
+            sym = tabla.buscar(id_tok["valor"])
+            if not sym or getattr(sym, "kind", "variable") != "function":
+                _sem(f"Funcion o procedimiento '{id_tok['valor']}' no declarado",
+                     id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                for arg in node.get("args", []):
+                    get_type(arg)
+                return None
+            params = getattr(sym, "params", []) or []
+            args = node.get("args", [])
+            if len(args) != len(params):
+                _sem(
+                    f"Llamada a '{id_tok['valor']}' espera {len(params)} argumento(s), recibio {len(args)}",
+                    id_tok["linea"], id_tok["columna"], valor=id_tok["valor"],
+                )
+            for i, arg in enumerate(args):
+                at = get_type(arg)
+                if i >= len(params) or at is None:
+                    continue
+                esperado = params[i]
+                if esperado.get("kind") == "array":
+                    if not (isinstance(at, str) and at.startswith("arreglo:")):
+                        _sem(f"Argumento {i + 1} de '{id_tok['valor']}' debe ser arreglo",
+                             id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                    elif at.split(":", 1)[1] != esperado.get("elem_type"):
+                        _sem(f"Argumento {i + 1} de '{id_tok['valor']}' espera arreglo de '{esperado.get('elem_type')}', recibio '{at.split(':', 1)[1]}'",
+                             id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                elif isinstance(at, str) and at.startswith("arreglo:"):
+                    _sem(f"Argumento {i + 1} de '{id_tok['valor']}' no debe ser arreglo",
+                         id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+                elif not _tipo_compatible(esperado.get("tipo"), at):
+                    _sem(f"Argumento {i + 1} de '{id_tok['valor']}' espera '{esperado.get('tipo')}', recibio '{at}'",
+                         id_tok["linea"], id_tok["columna"], valor=id_tok["valor"])
+            if getattr(sym, "return_type", None) == "void":
+                return None
+            return sym.return_type
         if t == "BinaryOp":
             lt = get_type(node["left"])
             rt = get_type(node["right"])
@@ -689,7 +1031,7 @@ def check_semantic(ast, tabla, errors=None):
         if t == "Declaration":
             dt = node["dataType"]
             id_tok = node.get("id") or {}
-            vt = _TIPO_VAR_DE_TOKEN.get(dt["tipo"], dt["valor"])
+            vt = _tipo_desde_token(dt)
             # Registrar en la tabla ANTES de chequear el tipo de la expresion
             # (asi `entero x = x + 1;` reporta correctamente uso de x).
             nombre = id_tok.get("valor", "")
@@ -708,6 +1050,54 @@ def check_semantic(ast, tabla, errors=None):
                         dt["linea"], dt.get("columna", 0),
                         valor=id_tok.get("valor", ""),
                     )
+        elif t == "ArrayDeclaration":
+            dt = node["dataType"]
+            id_tok = node.get("id") or {}
+            size_tok = node.get("size") or {}
+            vt = _tipo_desde_token(dt)
+            try:
+                size = int(size_tok.get("valor", 0))
+            except (TypeError, ValueError):
+                size = 0
+            if size <= 0:
+                _sem(f"El arreglo '{id_tok.get('valor','?')}' debe tener tamano mayor que cero",
+                     size_tok.get("linea", dt["linea"]), size_tok.get("columna", 0),
+                     valor=id_tok.get("valor", ""))
+            nombre = id_tok.get("valor", "")
+            if nombre:
+                tabla.insertar(
+                    nombre,
+                    f"arreglo {vt}",
+                    id_tok.get("linea", dt["linea"]),
+                    columna=id_tok.get("columna", 0),
+                    kind="array",
+                    elem_type=vt,
+                    size=size,
+                    valor=f"[{size}]",
+                )
+        elif t == "FunctionDecl":
+            ret = _tipo_desde_token(node["returnType"]) if node.get("returnType") else "void"
+            id_tok = node.get("id") or {}
+            tabla.entrar_ambito()
+            _funcion_actual.append({"nombre": id_tok.get("valor", ""), "ret": ret, "tiene_return": False})
+            for param in node.get("params", []):
+                p_id = param.get("id") or {}
+                p_tipo = _tipo_desde_token(param.get("dataType") or {})
+                tabla.insertar(
+                    p_id.get("valor", ""),
+                    f"arreglo {p_tipo}" if param.get("isArray") else p_tipo,
+                    p_id.get("linea", id_tok.get("linea", 0)),
+                    columna=p_id.get("columna", 0),
+                    kind="array" if param.get("isArray") else "variable",
+                    elem_type=p_tipo if param.get("isArray") else None,
+                    size=None,
+                )
+            check_node(node.get("body"))
+            info = _funcion_actual.pop()
+            if ret != "void" and not info["tiene_return"]:
+                _sem(f"Funcion '{info['nombre']}' debe retornar un valor de tipo '{ret}'",
+                     id_tok.get("linea", 0), id_tok.get("columna", 0), valor=info["nombre"])
+            tabla.salir_ambito()
         elif t == "Assignment":
             id_tok = node["id"]
             sym = tabla.buscar(id_tok["valor"])
@@ -725,15 +1115,69 @@ def check_semantic(ast, tabla, errors=None):
                         id_tok["linea"], id_tok["columna"],
                         valor=id_tok["valor"],
                     )
+        elif t == "ArrayAssignment":
+            target = node.get("target") or {}
+            id_tok = target.get("id") or {}
+            sym = tabla.buscar(id_tok.get("valor", ""))
+            if not sym:
+                _sem(f"Arreglo '{id_tok.get('valor','?')}' no declarado",
+                     id_tok.get("linea", 0), id_tok.get("columna", 0),
+                     valor=id_tok.get("valor", ""))
+                get_type(target.get("index"))
+                get_type(node.get("expr"))
+            elif getattr(sym, "kind", "variable") != "array":
+                _sem(f"Identificador '{id_tok.get('valor','?')}' no es un arreglo",
+                     id_tok.get("linea", 0), id_tok.get("columna", 0),
+                     valor=id_tok.get("valor", ""))
+                get_type(target.get("index"))
+                get_type(node.get("expr"))
+            else:
+                get_type(target)
+                et = get_type(node.get("expr"))
+                if et and not _tipo_compatible(sym.elem_type, et):
+                    _sem(
+                        f"Asignacion incompatible: arreglo '{id_tok.get('valor','?')}' "
+                        f"de elementos '{sym.elem_type}' no puede recibir '{et}'",
+                        id_tok.get("linea", 0), id_tok.get("columna", 0),
+                        valor=id_tok.get("valor", ""),
+                    )
         elif t == "Print":
             for a in node.get("args", []):
                 get_type(a)
         elif t == "Read":
-            id_tok = node["id"]
-            if not tabla.buscar(id_tok["valor"]):
-                _sem(f"Variable '{id_tok['valor']}' no declarada",
-                     id_tok["linea"], id_tok["columna"],
-                     valor=id_tok["valor"])
+            target = node.get("target")
+            if target and target.get("type") == "ArrayAccess":
+                get_type(target)
+            else:
+                id_tok = node["id"] or (target or {}).get("token", {})
+                if id_tok and not tabla.buscar(id_tok["valor"]):
+                    _sem(f"Variable '{id_tok['valor']}' no declarada",
+                         id_tok["linea"], id_tok["columna"],
+                         valor=id_tok["valor"])
+        elif t == "Return":
+            if not _funcion_actual:
+                kw = node.get("kw", {})
+                _sem("'retornar' solo puede usarse dentro de una funcion o procedimiento",
+                     kw.get("linea", 0), kw.get("columna", 0), valor="retornar")
+            else:
+                actual = _funcion_actual[-1]
+                actual["tiene_return"] = True
+                et = get_type(node.get("expr")) if node.get("expr") else None
+                if actual["ret"] == "void":
+                    if node.get("expr"):
+                        kw = node.get("kw", {})
+                        _sem(f"Procedimiento '{actual['nombre']}' no debe retornar valor",
+                             kw.get("linea", 0), kw.get("columna", 0), valor=actual["nombre"])
+                elif not node.get("expr"):
+                    kw = node.get("kw", {})
+                    _sem(f"Funcion '{actual['nombre']}' debe retornar '{actual['ret']}'",
+                         kw.get("linea", 0), kw.get("columna", 0), valor=actual["nombre"])
+                elif et and not _tipo_compatible(actual["ret"], et):
+                    kw = node.get("kw", {})
+                    _sem(f"Funcion '{actual['nombre']}' debe retornar '{actual['ret']}', no '{et}'",
+                         kw.get("linea", 0), kw.get("columna", 0), valor=actual["nombre"])
+        elif t == "Call":
+            get_type(node)
         elif t == "If":
             ct = get_type(node["cond"])
             if ct and ct != "booleano":

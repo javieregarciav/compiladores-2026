@@ -63,11 +63,39 @@ class GeneradorTAC:
             valor = self._g_expr(node["expr"])
             self.emit("=", valor, None, nombre)
 
+    def _g_ArrayDeclaration(self, node):
+        id_ = node.get("id") or {}
+        tipo = (node.get("dataType") or {}).get("valor", "?")
+        size = (node.get("size") or {}).get("valor", "?")
+        self.emit("array_decl", tipo, str(size), id_.get("valor", "?"))
+
     def _g_Assignment(self, node):
         id_ = node.get("id") or {}
         nombre = id_.get("valor", "?")
         valor = self._g_expr(node["expr"])
         self.emit("=", valor, None, nombre)
+
+    def _g_ArrayAssignment(self, node):
+        target = node.get("target") or {}
+        id_ = target.get("id") or {}
+        idx = self._g_expr(target.get("index"))
+        valor = self._g_expr(node.get("expr"))
+        self.emit("astore", id_.get("valor", "?"), idx, valor)
+
+    def _g_FunctionDecl(self, node):
+        id_ = node.get("id") or {}
+        nombre = id_.get("valor", "?")
+        ret = (node.get("returnType") or {}).get("valor", "void")
+        params = []
+        for p in node.get("params", []):
+            p_tipo = (p.get("dataType") or {}).get("valor", "?")
+            p_nom = (p.get("id") or {}).get("valor", "?")
+            pref = "arreglo " if p.get("isArray") else ""
+            params.append(f"{pref}{p_tipo} {p_nom}")
+        self.emit("label_func", None, None, nombre)
+        self.emit("enter_func", ret, ", ".join(params), nombre)
+        self._gen(node.get("body"))
+        self.emit("exit_func", None, None, nombre)
 
     def _g_If(self, node):
         cond = self._g_expr(node.get("cond"))
@@ -122,7 +150,16 @@ class GeneradorTAC:
         self.emit("label", None, None, L_fin)
 
     def _g_Read(self, node):
+        target = node.get("target")
+        if target and target.get("type") == "ArrayAccess":
+            idx = self._g_expr(target.get("index"))
+            tmp = self._nuevo_temp()
+            self.emit("read", None, None, tmp)
+            self.emit("astore", (target.get("id") or {}).get("valor", "?"), idx, tmp)
+            return
         id_ = node.get("id") or {}
+        if id_.get("type") == "Identifier":
+            id_ = id_.get("token") or {}
         self.emit("read", None, None, id_.get("valor", "?"))
 
     def _g_Print(self, node):
@@ -143,6 +180,10 @@ class GeneradorTAC:
         t = self._nuevo_temp()
         self.emit("call", id_.get("valor", "?"), str(len(ids)), t)
         return t
+
+    def _g_Return(self, node):
+        valor = self._g_expr(node.get("expr")) if node.get("expr") else None
+        self.emit("return", valor, None, None)
 
     def _g_short_circuit(self, node, corto_si):
         """Genera TAC con short-circuit para && (corto_si='if_false')
@@ -184,6 +225,12 @@ class GeneradorTAC:
             return "null"
         if t == "Identifier":
             return node["token"]["valor"]
+        if t == "ArrayAccess":
+            id_ = node.get("id") or {}
+            idx = self._g_expr(node.get("index"))
+            tmp = self._nuevo_temp()
+            self.emit("aload", id_.get("valor", "?"), idx, tmp)
+            return tmp
         if t == "Group":
             return self._g_expr(node["expr"])
         if t == "Call":

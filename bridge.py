@@ -96,11 +96,25 @@ def main():
         # La tabla se llena en check_semantic (con scopes correctos),
         # asi que recien aca podemos recolectar los simbolos.
         for sim in tabla.todos_los_simbolos():
+            params = getattr(sim, "params", []) or []
+            if isinstance(params, list):
+                params_txt = ", ".join(
+                    f"{p.get('kind', 'variable')} {p.get('tipo', '')} {p.get('nombre', '')}".strip()
+                    for p in params
+                )
+            else:
+                params_txt = str(params)
             simbolos_json.append({
                 "nombre": sim.nombre,
                 "tipo":   sim.tipo,
                 "linea":  sim.linea,
                 "valor":  str(sim.valor) if sim.valor is not None else "—",
+                "kind":   getattr(sim, "kind", "variable"),
+                "elem_type": getattr(sim, "elem_type", None),
+                "size": getattr(sim, "size", None),
+                "params": params,
+                "params_texto": params_txt,
+                "return_type": getattr(sim, "return_type", None),
             })
         # Si hay errores, no generar TAC para no producir instrucciones invalidas
         quads = []
