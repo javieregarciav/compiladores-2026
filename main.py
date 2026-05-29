@@ -331,6 +331,60 @@ programa {
     imprimir(cursoExitoso);
 }
 """),
+("08 Fase 3 - Arreglos", """// Ejemplo 08 - Arreglos unidimensionales
+programa {
+    arreglo entero notas[5];
+    entero i = 0;
+    mientras (i < 5) {
+        notas[i] = 70 + i;
+        i = i + 1;
+    }
+    entero primera = notas[0];
+    entero ultima = notas[4];
+    imprimir(primera, ultima);
+}
+"""),
+("09 Fase 3 - Funciones", """// Ejemplo 09 - Funciones y procedimientos
+programa {
+    funcion decimal promedio(entero a, entero b, entero c) {
+        retornar (a + b + c) / 3;
+    }
+
+    procedimiento imprimir_resultado(decimal valor) {
+        imprimir("Promedio:");
+        imprimir(valor);
+    }
+
+    decimal p = promedio(90, 80, 75);
+    imprimir_resultado(p);
+}
+"""),
+("10 Sistema de Notas", """// Ejemplo 10 - Sistema de notas resumido
+programa {
+    arreglo cadena nombres[30];
+    arreglo cadena carnets[30];
+    arreglo decimal nota1[30];
+    arreglo decimal nota2[30];
+    arreglo decimal nota3[30];
+    entero cantidad_estudiantes = 0;
+
+    funcion decimal promedio_estudiante(entero i) {
+        retornar (nota1[i] + nota2[i] + nota3[i]) / 3;
+    }
+
+    procedimiento imprimir_estudiante(entero i) {
+        imprimir(nombres[i], carnets[i], promedio_estudiante(i));
+    }
+
+    nombres[0] = "Ana Garcia";
+    carnets[0] = "2026001";
+    nota1[0] = 95.0;
+    nota2[0] = 88.0;
+    nota3[0] = 91.0;
+    cantidad_estudiantes = 1;
+    imprimir_estudiante(0);
+}
+"""),
 ]
 
 class NumeradorLineas(tk.Canvas):

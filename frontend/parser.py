@@ -1149,7 +1149,9 @@ def check_semantic(ast, tabla, errors=None):
             if target and target.get("type") == "ArrayAccess":
                 get_type(target)
             else:
-                id_tok = node["id"] or (target or {}).get("token", {})
+                id_tok = node.get("id") or (target or {}).get("token", {})
+                if id_tok and id_tok.get("type") == "Identifier":
+                    id_tok = id_tok.get("token", {})
                 if id_tok and not tabla.buscar(id_tok["valor"]):
                     _sem(f"Variable '{id_tok['valor']}' no declarada",
                          id_tok["linea"], id_tok["columna"],

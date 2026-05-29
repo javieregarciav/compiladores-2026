@@ -1,0 +1,204 @@
+programa {
+    arreglo cadena nombres[30];
+    arreglo cadena carnets[30];
+    arreglo cadena semestres[30];
+    arreglo cadena cursos[30];
+    arreglo cadena pensum[30];
+    arreglo cadena horarios[30];
+    arreglo cadena asignaciones[30];
+    arreglo decimal nota1[30];
+    arreglo decimal nota2[30];
+    arreglo decimal nota3[30];
+    entero cantidad_estudiantes = 0;
+    booleano sistema_activo = verdadero;
+
+    funcion decimal promedio_estudiante(entero i) {
+        retornar (nota1[i] + nota2[i] + nota3[i]) / 3;
+    }
+
+    funcion decimal promedio_curso() {
+        decimal suma = 0.0;
+        entero i = 0;
+        mientras (i < cantidad_estudiantes) {
+            suma = suma + promedio_estudiante(i);
+            i = i + 1;
+        }
+        si (cantidad_estudiantes == 0) {
+            retornar 0.0;
+        }
+        retornar suma / cantidad_estudiantes;
+    }
+
+    funcion entero contar_aprobados(decimal corte) {
+        entero total = 0;
+        entero i = 0;
+        mientras (i < cantidad_estudiantes) {
+            si (promedio_estudiante(i) >= corte) {
+                total = total + 1;
+            }
+            i = i + 1;
+        }
+        retornar total;
+    }
+
+    funcion decimal nota_mayor() {
+        decimal mayor = 0.0;
+        entero i = 0;
+        mientras (i < cantidad_estudiantes) {
+            si (nota1[i] > mayor) { mayor = nota1[i]; }
+            si (nota2[i] > mayor) { mayor = nota2[i]; }
+            si (nota3[i] > mayor) { mayor = nota3[i]; }
+            i = i + 1;
+        }
+        retornar mayor;
+    }
+
+    funcion decimal nota_menor() {
+        si (cantidad_estudiantes == 0) {
+            retornar 0.0;
+        }
+        decimal menor = nota1[0];
+        entero i = 0;
+        mientras (i < cantidad_estudiantes) {
+            si (nota1[i] < menor) { menor = nota1[i]; }
+            si (nota2[i] < menor) { menor = nota2[i]; }
+            si (nota3[i] < menor) { menor = nota3[i]; }
+            i = i + 1;
+        }
+        retornar menor;
+    }
+
+    procedimiento imprimir_menu() {
+        imprimir("===== SISTEMA DE REGISTRO DE NOTAS =====");
+        imprimir("1. Registrar estudiante");
+        imprimir("2. Listar estudiantes");
+        imprimir("3. Estadisticas del curso");
+        imprimir("4. Buscar estudiante por indice");
+        imprimir("5. Filtrar mejores notas");
+        imprimir("6. Salir");
+        imprimir("Seleccione opcion:");
+    }
+
+    procedimiento imprimir_estudiante(entero i) {
+        imprimir("Indice:");
+        imprimir(i);
+        imprimir("Nombre:");
+        imprimir(nombres[i]);
+        imprimir("Carnet:");
+        imprimir(carnets[i]);
+        imprimir("Semestre:");
+        imprimir(semestres[i]);
+        imprimir("Curso:");
+        imprimir(cursos[i]);
+        imprimir("Pensum:");
+        imprimir(pensum[i]);
+        imprimir("Horario:");
+        imprimir(horarios[i]);
+        imprimir("Asignacion:");
+        imprimir(asignaciones[i]);
+        imprimir("Notas:");
+        imprimir(nota1[i], nota2[i], nota3[i]);
+        imprimir("Promedio:");
+        imprimir(promedio_estudiante(i));
+    }
+
+    procedimiento listar_estudiantes() {
+        entero i = 0;
+        mientras (i < cantidad_estudiantes) {
+            imprimir_estudiante(i);
+            i = i + 1;
+        }
+    }
+
+    procedimiento mostrar_estadisticas() {
+        decimal corte = 61.0;
+        entero aprobados = contar_aprobados(corte);
+        entero reprobados = cantidad_estudiantes - aprobados;
+        imprimir("Promedio general:");
+        imprimir(promedio_curso());
+        imprimir("Nota mayor:");
+        imprimir(nota_mayor());
+        imprimir("Nota menor:");
+        imprimir(nota_menor());
+        imprimir("Aprobados:");
+        imprimir(aprobados);
+        imprimir("Reprobados:");
+        imprimir(reprobados);
+    }
+
+    procedimiento filtrar_mejores_notas(decimal corte) {
+        entero i = 0;
+        mientras (i < cantidad_estudiantes) {
+            si (promedio_estudiante(i) >= corte) {
+                imprimir_estudiante(i);
+            }
+            i = i + 1;
+        }
+    }
+
+    mientras (sistema_activo) {
+        imprimir_menu();
+        entero opcion = 0;
+        leer(opcion);
+
+        si (opcion == 1) {
+            si (cantidad_estudiantes < 30) {
+                entero i = cantidad_estudiantes;
+                imprimir("Nombre:");
+                leer(nombres[i]);
+                imprimir("Carnet:");
+                leer(carnets[i]);
+                imprimir("Semestre:");
+                leer(semestres[i]);
+                imprimir("Curso:");
+                leer(cursos[i]);
+                imprimir("Pensum:");
+                leer(pensum[i]);
+                imprimir("Horario:");
+                leer(horarios[i]);
+                imprimir("Asignacion:");
+                leer(asignaciones[i]);
+                imprimir("Nota 1:");
+                leer(nota1[i]);
+                imprimir("Nota 2:");
+                leer(nota2[i]);
+                imprimir("Nota 3:");
+                leer(nota3[i]);
+                cantidad_estudiantes = cantidad_estudiantes + 1;
+            } sino {
+                imprimir("Capacidad maxima alcanzada");
+            }
+        } sino {
+            si (opcion == 2) {
+                listar_estudiantes();
+            } sino {
+                si (opcion == 3) {
+                    mostrar_estadisticas();
+                } sino {
+                    si (opcion == 4) {
+                        entero indice = 0;
+                        imprimir("Indice del estudiante:");
+                        leer(indice);
+                        si (indice >= 0 && indice < cantidad_estudiantes) {
+                            imprimir_estudiante(indice);
+                        } sino {
+                            imprimir("Indice invalido");
+                        }
+                    } sino {
+                        si (opcion == 5) {
+                            decimal corte = 85.0;
+                            imprimir("Estudiantes con mejores notas:");
+                            filtrar_mejores_notas(corte);
+                        } sino {
+                            si (opcion == 6) {
+                                sistema_activo = falso;
+                            } sino {
+                                imprimir("Opcion invalida");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
