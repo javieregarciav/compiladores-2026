@@ -509,6 +509,9 @@ Esperado al F5:
 Ver archivo:
   programa_final.ext
 
+Ejecucion real en consola:
+  python3 ejecutar.py programa_final.ext
+
 
 ================================================================================
 ORDEN SUGERIDO PARA UNA PRESENTACION DE 5-7 MINUTOS

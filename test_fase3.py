@@ -5,6 +5,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(__file__))
 
 from frontend import Lexer, build_tree, check_semantic, GeneradorTAC
+from runtime import ejecutar_codigo
 
 
 def analizar(codigo):
@@ -65,6 +66,24 @@ programa {
         self.assertEqual(errores, [])
         self.assertGreaterEqual(len(tabla.todos_los_simbolos()), 30)
         self.assertGreater(len(quads), 100)
+
+    def test_programa_final_ejecuta_menu(self):
+        ruta = os.path.join(os.path.dirname(__file__), "programa_final.ext")
+        with open(ruta, "r", encoding="utf-8") as f:
+            codigo = f.read()
+        entradas = [
+            "1", "Ana Garcia", "2026001", "7", "Compiladores", "2026",
+            "Sabado", "Proyecto1", "95", "88", "91",
+            "2", "3", "4", "0", "5", "6",
+        ]
+        res, salida = ejecutar_codigo(codigo, entradas)
+        self.assertEqual(res.errores, [])
+        texto = "\n".join(salida)
+        self.assertIn("===== SISTEMA DE REGISTRO DE NOTAS =====", texto)
+        self.assertIn("Ana Garcia", texto)
+        self.assertIn("Promedio general:", texto)
+        self.assertIn("Aprobados:", texto)
+        self.assertIn("Estudiantes con mejores notas:", texto)
 
 
 if __name__ == "__main__":
