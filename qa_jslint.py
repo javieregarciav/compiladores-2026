@@ -1,4 +1,8 @@
-import re, sys
+import os
+import re
+import subprocess
+import sys
+import tempfile
 
 with open('index.php', 'r', encoding='utf-8') as f:
     src = f.read()
@@ -9,6 +13,32 @@ if not m:
     sys.exit(1)
 js = m.group(1)
 print(f'JS block: {len(js)} chars')
+
+with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as tmp:
+    tmp.write(js)
+    tmp_path = tmp.name
+
+try:
+    res = subprocess.run(
+        ["node", "--check", tmp_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+except FileNotFoundError:
+    res = None
+finally:
+    try:
+        os.unlink(tmp_path)
+    except OSError:
+        pass
+
+if res is not None:
+    if res.returncode != 0:
+        print(res.stdout.rstrip())
+        sys.exit(res.returncode)
+    print("OK - node --check valido la sintaxis JS")
+    sys.exit(0)
 
 BACKSLASH = chr(92)
 SQUOTE = chr(39)

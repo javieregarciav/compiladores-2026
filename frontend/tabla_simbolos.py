@@ -78,7 +78,7 @@ class TablaSimbolos:
         ambito = self._ambitos[-1]
         if nombre in ambito:
             _err_mod.agregar_semantico(
-                f"Identificador '{nombre}' ya fue declarado en este ambito (linea {ambito[nombre].linea})",
+                f"Variable '{nombre}' ya fue declarada en este ambito (linea {ambito[nombre].linea})",
                 linea, columna, valor=nombre,
             )
             return False

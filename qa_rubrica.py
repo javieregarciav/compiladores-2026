@@ -363,9 +363,9 @@ caso_tac(
     ops_esperadas=["read"],
 )
 caso_tac(
-    "3.12 And/Or logicos",
+    "3.12 And/Or logicos (short-circuit con saltos)",
     "programa { booleano b = verdadero || (verdadero && verdadero); }",
-    ops_esperadas=["||", "&&"],
+    ops_esperadas=["if_true", "if_false", "label"],
 )
 caso_tac(
     "3.13 Comparaciones",
